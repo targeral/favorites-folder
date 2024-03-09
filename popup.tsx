@@ -1,24 +1,29 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
+import { BookmarkManager } from './components/BookmarkManager';
+import BookmarksComponent from './components/BookmarkAIManager';
 
 function IndexPopup() {
-  const [data, setData] = useState("")
+  // const [bookmarksTreeNode, setBookmarksTreeNode] = useState<chrome.bookmarks.BookmarkTreeNode[]>([])
+
+  // chrome.runtime.sendMessage({popupOpen: true});
+
+  // useEffect(() => {
+  //   const main = async () => {
+  //     const results = await chrome.bookmarks.getTree();
+  //     setBookmarksTreeNode(results);
+  //     console.info('results', results);
+  //   };
+  //   main();
+  // }, []);
 
   return (
     <div
       style={{
-        padding: 16
+        padding: 16,
+        width: "400px"
       }}>
-      <h2>
-        Welcome to your{" "}
-        <a href="https://www.plasmo.com" target="_blank">
-          Plasmo
-        </a>{" "}
-        Extension!
-      </h2>
-      <input onChange={(e) => setData(e.target.value)} value={data} />
-      <a href="https://docs.plasmo.com" target="_blank">
-        View Docs
-      </a>
+      {/* <BookmarkManager bookmarksTrees={bookmarksTreeNode}></BookmarkManager> */}
+      <BookmarksComponent></BookmarksComponent>
     </div>
   )
 }
