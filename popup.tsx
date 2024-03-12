@@ -1,11 +1,21 @@
 import { useEffect, useState } from "react"
-import { BookmarkManager } from './components/BookmarkManager';
-import BookmarksComponent from './components/BookmarkAIManager';
+import Bookmark from './components/Bookmark';
+import { sendToBackground } from "@plasmohq/messaging"
+
+import './popup.less';
+
 
 function IndexPopup() {
   // const [bookmarksTreeNode, setBookmarksTreeNode] = useState<chrome.bookmarks.BookmarkTreeNode[]>([])
 
   // chrome.runtime.sendMessage({popupOpen: true});
+  useEffect(() => {
+    chrome.runtime.sendMessage({ popupOpen: true });
+    const main = async () => {
+      await sendToBackground({ name: 'popup-open' });
+    };
+    main();
+  }, []);
 
   // useEffect(() => {
   //   const main = async () => {
@@ -17,14 +27,7 @@ function IndexPopup() {
   // }, []);
 
   return (
-    <div
-      style={{
-        padding: 16,
-        width: "400px"
-      }}>
-      {/* <BookmarkManager bookmarksTrees={bookmarksTreeNode}></BookmarkManager> */}
-      <BookmarksComponent></BookmarksComponent>
-    </div>
+    <Bookmark></Bookmark>
   )
 }
 
