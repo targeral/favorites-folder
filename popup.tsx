@@ -10,7 +10,7 @@ function IndexPopup() {
 
   // chrome.runtime.sendMessage({popupOpen: true});
   useEffect(() => {
-    chrome.runtime.sendMessage({ popupOpen: true });
+    // chrome.runtime.sendMessage({ popupOpen: true });
     const main = async () => {
       await sendToBackground({ name: 'popup-open' });
     };
