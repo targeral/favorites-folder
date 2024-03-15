@@ -9,6 +9,8 @@ import ListItemButton from '@mui/material/ListItemButton';
 import ListItemText from '@mui/material/ListItemText';
 import Typography from '@mui/material/Typography';
 
+import Settings from './setting';
+
 import BookmarksManager from './bookmarks-manager';
 
 const drawerWidth = 240;
@@ -27,6 +29,7 @@ function ManagerAndSetting() {
   const handleItemClick = (itemName: string) => {
     setCurrentItem(itemName);
   }
+
 
   return (
     <Box sx={{ display: 'flex' }}>
@@ -66,6 +69,9 @@ function ManagerAndSetting() {
         </Box> */}
         {
           currentItem === itemMap.BOOKMARKS ? <BookmarksManager></BookmarksManager> : null
+        }
+        {
+          currentItem === itemMap.SETTING ? <Settings></Settings> : null
         }
       </Box>
     </Box>
