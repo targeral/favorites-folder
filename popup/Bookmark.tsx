@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, Typography, TextField, Button, Chip, IconButton, Box } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
-import CloseIcon from '@mui/icons-material/Close';
 import { checkIfBookmarked } from '../chrome-utils';
+import { sendToBackground } from '@plasmohq/messaging';
 
 const getCurrentTabUrl = async (): Promise<string> => {
     const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -71,6 +71,17 @@ const BookmarkCard = () => {
     // Complete bookmark creation or modification
     // TODO: 调用相关接口，同步数据
     window.close();
+  };
+
+  const handleRemove = async () => {
+    const result = await sendToBackground({
+      name: 'remove-bookmark'
+    });
+
+    if (result.message) {
+      setBookmarkAction(BookmarkAction.CREATE);
+    }
+
   };
 
   const handleManageClick = () => {
@@ -192,7 +203,7 @@ const BookmarkCard = () => {
         <Box display="flex" alignItems="center" gap={2}>
           { 
             bookmarkAction === BookmarkAction.MODIFY 
-              ? <Button variant="contained" color='warning'  onClick={handleComplete}>移除</Button> 
+              ? <Button variant="contained" color='warning'  onClick={handleRemove}>移除</Button> 
               : null
           }
           <Button variant="contained" onClick={handleComplete}>
