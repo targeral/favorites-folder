@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react"
-import Bookmark from './components/Bookmark';
+import Bookmark from './Bookmark';
 import { sendToBackground } from "@plasmohq/messaging"
 
-import './popup.less';
+import './index.less';
 
 
 function IndexPopup() {
