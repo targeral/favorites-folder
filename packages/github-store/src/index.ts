@@ -2,6 +2,7 @@ import axios from 'axios';
 import debugFactory from 'debug';
 import type { IBookmark } from 'api-types';
 import { Github, GithubOptions } from './github';
+import { transformBookmarksToString } from './utils';
 
 export interface IGithubStorageOptions extends GithubOptions {
   storageFolder: string;
@@ -25,8 +26,35 @@ export class GithubStorage extends Github {
     }`;
   }
 
-  addBookmark() {
-    // TODO
+  async addBookmark(bookmark: IBookmark) {
+    const filePath = this.#getFilePath();
+    const result = await this.getContentByFilePath({
+      filePath,
+      branch: 'main',
+    });
+
+    if (result.content) {
+      const bookmarks = JSON.parse(result.content);
+      bookmarks.push(bookmark);
+
+      const jsonString = transformBookmarksToString(bookmarks);
+      try {
+        await this.updateContentByFilePath({
+          updateContent: jsonString,
+          filePath,
+          branch: this.#storageOptions.branch,
+          message: 'add new bookmark',
+        });
+        return { status: 'success', error: null };
+      } catch (e) {
+        return { status: 'fail', error: e };
+      }
+    }
+
+    return {
+      status: 'fail',
+      error: new Error(`未获取到${this.#getFilePath()}文件数据`),
+    };
   }
 
   removeBookmark() {
@@ -52,15 +80,32 @@ export class GithubStorage extends Github {
   }
 
   async sync(bookmarks: IBookmark[]) {
-    const jsonString = JSON.stringify(bookmarks, undefined, 2);
+    const jsonString = transformBookmarksToString(bookmarks);
     const filePath = `${this.#storageOptions.storageFolder}/${
       this.#storageOptions.filename
     }`;
+    const { branch } = this.#storageOptions;
 
-    await this.gitCommitAndPush({
-      content: jsonString,
+    const result = await this.checkFilePathExistAndReturnContentData({
       filePath,
-      branch: this.#storageOptions.branch,
+      branch,
     });
+
+    if (result.exist) {
+      // 更新内容
+      return await this.updateContentByFilePath({
+        updateContent: jsonString,
+        contentData: result.data,
+        filePath,
+        branch,
+      });
+    } else {
+      // 初始化文件
+      return await this.gitCommitAndPush({
+        content: jsonString,
+        filePath,
+        branch,
+      });
+    }
   }
 }

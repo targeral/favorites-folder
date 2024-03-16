@@ -38,6 +38,7 @@
   "devDependencies": {
     "@modern-js/eslint-config": "2.48.2",
     "@modern-js/module-tools": "2.48.2",
+    "@octokit/openapi-types": "20.0.0",
     "@types/debug": "4.1.12",
     "@types/node": "~16.11.7",
     "api-types": "workspace:*",
