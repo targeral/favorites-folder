@@ -1,4 +1,6 @@
+/* eslint-disable max-lines */
 import { Octokit } from 'octokit';
+import type { components } from '@octokit/openapi-types';
 import debugFactory from 'debug';
 
 const debug = debugFactory('GITHUB');
@@ -32,6 +34,32 @@ export class Github {
       owner: this.options.owner,
       repo: this.options.repo,
     };
+  }
+
+  async #getFileContentData({
+    contentData,
+    filePath,
+    branch = 'main',
+  }: {
+    filePath: string;
+    contentData?: components['schemas']['content-file'];
+    branch?: string;
+  }) {
+    if (!contentData) {
+      const response = await this.#octokit.rest.repos.getContent({
+        ...this.#getOwnerAndRepo(),
+        path: filePath,
+        ref: branch,
+      });
+
+      if (!Array.isArray(response.data) && response.data.type === 'file') {
+        return response.data;
+      } else {
+        throw new Error(`获取 ${filePath} 文件内容失败`);
+      }
+    }
+
+    return contentData;
   }
 
   // 获取当前仓库的树对象
@@ -81,17 +109,11 @@ export class Github {
     commitSha: string;
   }) {
     const git = await this.#getGit();
-    const refResp = await git.updateRef({
+    await git.updateRef({
       ...this.#getOwnerAndRepo(),
       ref: `heads/${branch}`,
       sha: commitSha,
     });
-
-    if (refResp.status === 200) {
-      console.info('提交成功');
-    }
-
-    console.info('update ref:resp', refResp);
   }
 
   async getTreeByBranchSha(branchSha: string) {
@@ -154,7 +176,15 @@ export class Github {
     return treeResp.data.sha;
   }
 
-  async createCommit({ treeSha, branch }: { treeSha: string; branch: string }) {
+  async createCommit({
+    treeSha,
+    branch,
+    message,
+  }: {
+    treeSha: string;
+    branch: string;
+    message?: string;
+  }) {
     const git = await this.#getGit();
     const parentSha = await this.getBranchSha({ branch });
     if (parentSha === null) {
@@ -167,7 +197,7 @@ export class Github {
       ...this.#getOwnerAndRepo(),
       tree: treeSha,
       parents: [parentSha],
-      message: 'update bookmarks',
+      message: message ?? 'add some content',
       author: {
         name: this.options.owner,
         email: this.options.email,
@@ -215,29 +245,156 @@ export class Github {
     content = '',
     filePath,
     branch = 'main',
+    message,
   }: {
     filePath: string;
     content?: string;
     branch?: string;
+    message?: string;
   }) {
     debug('branch', branch);
     debug('filePath', filePath);
+    try {
+      const currentTreeSha = await this.getCurrentTree({ branch });
+      const blobSha = await this.createBlob(content);
+      const treeSha = await this.createTree({
+        blobSha,
+        filePath,
+        currentTreeSha,
+      });
+      const commitResult = await this.createCommit({
+        treeSha,
+        branch,
+        message,
+      });
 
-    const currentTreeSha = await this.getCurrentTree({ branch });
-    const blobSha = await this.createBlob(content);
-    const treeSha = await this.createTree({
-      blobSha,
-      filePath,
-      currentTreeSha,
-    });
-    const commitResult = await this.createCommit({
-      treeSha,
-      branch,
-    });
+      await this.pushCommitToBranch({
+        branch,
+        commitSha: commitResult.sha,
+      });
+      return { message: 'success', reason: null };
+    } catch (e) {
+      return { message: 'fail', reason: e };
+    }
+  }
 
-    await this.pushCommitToBranch({
-      branch,
-      commitSha: commitResult.sha,
+  async updateContentByFilePath({
+    updateContent = '',
+    contentData,
+    filePath,
+    branch = 'main',
+    message = 'update content',
+  }: {
+    filePath: string;
+    updateContent?: string;
+    contentData?: components['schemas']['content-file'];
+    branch?: string;
+    message?: string;
+  }) {
+    try {
+      // 获取文件的 SHA
+      const data = await this.#getFileContentData({
+        filePath,
+        branch,
+        contentData,
+      });
+
+      // Base64 编码更新的内容
+      const contentEncoded = Buffer.from(updateContent).toString('base64');
+      // 创建一个 commit 来更新文件
+      const updateResponse =
+        await this.#octokit.rest.repos.createOrUpdateFileContents({
+          ...this.#getOwnerAndRepo(),
+          path: filePath,
+          message,
+          content: contentEncoded,
+          sha: data.sha,
+        });
+      console.info('updateResponse', updateResponse);
+      return {
+        message: 'success',
+        reason: null,
+      };
+    } catch (e) {
+      return {
+        message: 'fail',
+        reason: e,
+      };
+    }
+  }
+
+  async checkFilePathExistAndReturnContentData({
+    filePath,
+    branch,
+  }: {
+    filePath: string;
+    branch: string;
+  }): Promise<
+    | {
+        exist: true;
+        data: components['schemas']['content-file'];
+      }
+    | {
+        exist: false;
+        data: null;
+      }
+  > {
+    try {
+      const response = await this.#octokit.rest.repos.getContent({
+        ...this.#getOwnerAndRepo(),
+        path: filePath,
+        ref: branch,
+      });
+      if (
+        response.status === 200 &&
+        !Array.isArray(response.data) &&
+        response.data.type === 'file'
+      ) {
+        return {
+          exist: true,
+          data: response.data,
+        };
+      }
+
+      return {
+        exist: false,
+        data: null,
+      };
+    } catch (e) {
+      return {
+        exist: false,
+        data: null,
+      };
+    }
+  }
+
+  async getContentByFilePath({
+    filePath,
+    branch,
+  }: {
+    filePath: string;
+    branch: string;
+  }) {
+    const response = await this.#octokit.rest.repos.getContent({
+      ...this.#getOwnerAndRepo(),
+      path: filePath,
+      ref: branch,
     });
+    if (
+      response.status === 200 &&
+      !Array.isArray(response.data) &&
+      response.data.type === 'file'
+    ) {
+      const {
+        data: { content: contentBase64 },
+      } = response;
+      const contentString = Buffer.from(contentBase64, 'base64').toString(
+        'utf-8',
+      );
+      debug(contentString);
+      return { content: contentString, error: null };
+    }
+
+    return { content: undefined, error: response.data /** TODO */ };
   }
 }
