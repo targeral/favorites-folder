@@ -1,0 +1,65 @@
+name: Build and Release
+
+on:
+  # push:
+  #   tags:
+  #     - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        type: string
+        description: 'Release Version'
+        required: true
+        default: '0.0.0'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout Repo
+      uses: actions/checkout@v3
+      with:
+        ref: ${{ github.event.inputs.branch }}
+
+    - name: Install Pnpm
+      run: corepack enable
+
+    - name: Setup Node.js 18
+      uses: actions/setup-node@v3
+      with:
+        node-version: "18"
+        cache: 'pnpm'
+    
+    - name: Install npm v9
+      run: npm install -g npm@9
+
+    - name: Install Dependencies
+      run: pnpm install
+
+    - name: Build project
+      run: cd apps/browser-extension && pnpm build
+
+    - name: Archive production artifacts
+      run: |
+        # 将构建产物打包成一个压缩文件
+        cd apps/browser-extension && zip -r release-${{ github.event.inputs.version }}.zip ./build/chrome-mv3-prod
+    - name: Create Release
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ github.event.inputs.version }}
+        release_name: Release ${{ github.event.inputs.version }}
+        body: 'Release version ${{ github.event.inputs.version }}'
+        draft: false
+        prerelease: false
+    - name: Upload Release Asset
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./release-${{ github.event.inputs.version }}.zip
+        asset_name: release-${{ github.event.inputs.version }}.zip
+        asset_content_type: application/zip
