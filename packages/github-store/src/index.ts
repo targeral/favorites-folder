@@ -57,12 +57,12 @@ export class GithubStorage extends Github {
     };
   }
 
-  removeBookmark() {
-    // TODO
+  async removeBookmark() {
+    // Empty
   }
 
-  modifyBookmark() {
-    // TODO
+  async modifyBookmark() {
+    // Empty
   }
 
   async getBookmarks() {
@@ -79,7 +79,7 @@ export class GithubStorage extends Github {
     debug(response);
   }
 
-  async sync(bookmarks: IBookmark[]) {
+  async syncBookmarks(bookmarks: IBookmark[]) {
     const jsonString = transformBookmarksToString(bookmarks);
     const filePath = `${this.#storageOptions.storageFolder}/${
       this.#storageOptions.filename

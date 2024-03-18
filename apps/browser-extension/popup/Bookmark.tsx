@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent, Typography, TextField, Button, Chip, IconButton, Box } from '@mui/material';
+import { Card, CardContent, Typography, TextField, Button, Chip, IconButton, Box, CircularProgress } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import { checkIfBookmarked } from '../chrome-utils';
 import { sendToBackground } from '@plasmohq/messaging';
+import { useStorage } from '@plasmohq/storage/hook';
+import { getStorage, StorageKeyHash } from '~storage/index';
+import type { ITagItem } from 'api-types';
 
 const getCurrentTabUrl = async (): Promise<string> => {
     const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -16,25 +19,42 @@ enum BookmarkAction {
   NONE
 }
 
+const instance = getStorage();
+
 const BookmarkCard = () => {
   const [bookmarkAction, setBookmarkAction] = useState<BookmarkAction>(BookmarkAction.NONE);
   const [actionText, setActionText] = useState('');
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [title, setTitle] = useState('');
-  const [tags, setTags] = useState(['Mock Tag 1', 'Mock Tag 2']);
-  const [newTag, setNewTag] = useState('');
+  const [tags, setTags] = useState<ITagItem[]>([]);
+  const [newTag, setNewTag] = useState<ITagItem>();
   const [editTagIndex, setEditTagIndex] = useState(null);
   const [isAddingTag, setIsAddingTag] = useState(false);
+  const [appearFetchTagLoading, setAppearFetchTagLoading] = useState<boolean>(true);
 
   useEffect(() => {
+    const analyzeTags = async ({ url }) => {
+      const apiKey = await instance.get(StorageKeyHash.GEMINI_API_KEY);
+      console.info('apiKey', apiKey);
+      const { data } = await sendToBackground({
+        name: 'get-tags',
+        body: {
+          url,
+          apiKey
+        }
+      });
+      console.info('tags', tags);
+      setTags(data.tags);
+      setAppearFetchTagLoading(false);
+    }
     // 使用 document.title 获取当前页面的标题信息
     const main = async () => {
-        const currentTitle = await getCurrentTabUrl();
-        const isBookmarked = await checkIfBookmarked(currentTitle);
-        setTitle(currentTitle);
+        const currentUrl = await getCurrentTabUrl();
+        const isBookmarked = await checkIfBookmarked(currentUrl);
+        setTitle(currentUrl);
         setBookmarkAction(isBookmarked ? BookmarkAction.MODIFY : BookmarkAction.CREATE);
         setActionText(isBookmarked ? '修改' : '创建');
-        tags
+        await analyzeTags({ url: currentUrl });
     };
     main();
 
@@ -64,7 +84,7 @@ const BookmarkCard = () => {
   const handleAddTag = () => {
     // Add new tag to bookmark using chrome.bookmarks API
     setTags([...tags, newTag]);
-    setNewTag('');
+    setNewTag(newTag);
   };
 
   const handleComplete = () => {
@@ -94,13 +114,13 @@ const BookmarkCard = () => {
 
   const handleTagChange = (index) => (event) => {
     const newTags = [...tags];
-    newTags[index] = event.target.value;
+    newTags[index].name = event.target.value;
     setTags(newTags);
   };
 
   const handleTagKeyPress = (index) => (event) => {
     if (event.key === 'Enter') {
-      if (!tags[index].trim()) {
+      if (!tags[index].name.trim()) {
         // 如果标签为空，则移除它
         setTags((currentTags) => currentTags.filter((_, i) => i !== index));
       }
@@ -118,7 +138,7 @@ const BookmarkCard = () => {
   };
 
   const handleAddTagClick = () => {
-    setTags([...tags, '']);
+    setTags([...tags, { name: '', source: 'USER' }]);
     setIsAddingTag(true);
     setEditTagIndex(tags.length);
   };
@@ -153,38 +173,45 @@ const BookmarkCard = () => {
           当前书签的推荐分类为：
         </Typography>
         {/* <div> */}
-        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, alignItems: 'center', mt: 2 }}>
-          {tags.map((tag, index) => (
-            <div key={index} onDoubleClick={handleTagDoubleClick(index)}>
-              {editTagIndex === index ? (
-                <TextField
-                  value={tag}
-                  onChange={handleTagChange(index)}
-                  onBlur={handleTagBlur(index)}
-                  onKeyDown={handleTagKeyPress(index)}
-                  autoFocus
-                  size="small"
-                  sx={{ width: 100 }}
-                />
-              ) : (
-                <Chip
-                  label={tag} onDelete={handleTagDelete(tag)} 
-                  // onDoubleClick={handleTagDoubleClick(index)}
-                />
-              )}
-            </div>
-            // <Chip
-            //   key={index}
-            //   label={tag}
-            //   onDelete={handleTagDelete(tag)}
-            //   deleteIcon={<CloseIcon />}
-            //   sx={{ mr: 1, mt: 1 }}
-            // />
-          ))}
-          <IconButton onClick={handleAddTagClick} size="small">
-            <AddIcon />
-          </IconButton>
-        </Box>
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, alignItems: 'center', mt: 2 }}>
+            { 
+              appearFetchTagLoading ? <CircularProgress size={30} /> : (
+                <>
+                {tags.map((tag, index) => (
+                  <div key={index} onDoubleClick={handleTagDoubleClick(index)}>
+                    {editTagIndex === index ? (
+                      <TextField
+                        value={tag.name}
+                        onChange={handleTagChange(index)}
+                        onBlur={handleTagBlur(index)}
+                        onKeyDown={handleTagKeyPress(index)}
+                        autoFocus
+                        size="small"
+                        sx={{ width: 100 }}
+                      />
+                    ) : (
+                      <Chip
+                        label={tag.name} onDelete={handleTagDelete(tag)} 
+                        // onDoubleClick={handleTagDoubleClick(index)}
+                      />
+                    )}
+                  </div>
+                  // <Chip
+                  //   key={index}
+                  //   label={tag}
+                  //   onDelete={handleTagDelete(tag)}
+                  //   deleteIcon={<CloseIcon />}
+                  //   sx={{ mr: 1, mt: 1 }}
+                  // />
+                ))}
+                <IconButton onClick={handleAddTagClick} size="small">
+                  <AddIcon />
+                </IconButton>
+                </>
+              )
+            }
+            </Box>
+          
         {/* </div> */}
         {/* <div>
           <TextField
