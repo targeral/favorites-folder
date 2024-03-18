@@ -5,20 +5,12 @@ import { GithubStorage } from "github-store"
 import React, { useCallback, useEffect, useState } from "react"
 
 import { sendToBackground } from "@plasmohq/messaging"
-import { Storage } from "@plasmohq/storage"
-import { useStorage } from "@plasmohq/storage/hook"
+import { useStorage } from "@plasmohq/storage/hook";
 
-const StorageKeyHash = {
-  TOKEN: "TOKEN",
-  REPO: "REPO",
-  OWNER: "OWNER",
-  EMAIL: "EMAIL"
-}
+import { StorageKeyHash, getStorage } from '~storage/index';
 
-const instance = new Storage({
-  area: "local",
-  copiedKeyList: Object.values(StorageKeyHash)
-})
+const instance = getStorage();
+
 
 function Settings() {
   const [token, setToken] = useStorage<string>(
@@ -48,6 +40,12 @@ function Settings() {
       instance
     },
     ""
+  );
+  const [geminiApiKey, setGeminiApiKey] = useStorage<string>(
+    {
+      key: StorageKeyHash.GEMINI_API_KEY,
+      instance,
+    }
   )
 
   const [showToken, setShowToken] = useState<boolean>(false);
@@ -82,7 +80,7 @@ function Settings() {
   const handleSyncBookmarkData = async () => {
     const gs = getGS()
     const { bookmarks } = await sendToBackground({ name: "get-bookmarks" })
-    const { message } = await gs.sync(bookmarks)
+    const { message } = await gs.syncBookmarks(bookmarks)
     setOpen(true);
     if (message === "success") {
       setSnackbarContent('同步成功');
@@ -105,6 +103,10 @@ function Settings() {
 
   const handleEmailChange = (event) => {
     setEmail(event.target.value)
+  }
+
+  const handleGeminiApiKeyChange = (event) => {
+    setGeminiApiKey(event.target.value);
   }
 
   const handleTest = async () => {
@@ -190,6 +192,14 @@ function Settings() {
           <Button variant="outlined" color="primary" onClick={handleTest}>
             测试添加书签功能
           </Button>
+        </Box>
+        <Box>
+          Google Gemini
+          <TextField
+            label="Gemini Api Key"
+            value={geminiApiKey}
+            onChange={handleGeminiApiKeyChange}
+          />
         </Box>
       </Stack>
       <Snackbar
