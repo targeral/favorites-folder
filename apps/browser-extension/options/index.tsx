@@ -23,13 +23,11 @@ const items = [itemMap.BOOKMARKS, itemMap.STORAGE, itemMap.SETTING];
 
 
 function ManagerAndSetting() {
-  const [data, setData] = useState("");
   const [currentItem, setCurrentItem] = useState(itemMap.BOOKMARKS);
 
   const handleItemClick = (itemName: string) => {
     setCurrentItem(itemName);
   }
-
 
   return (
     <Box sx={{ display: 'flex' }}>
@@ -63,10 +61,6 @@ function ManagerAndSetting() {
         sx={{ flexGrow: 1, p: 3, width: { sm: `calc(100% - ${drawerWidth}px)` } }}
       >
         <Toolbar />
-        {/* Add your content here */}
-        {/* <Box>
-          This is the main content area
-        </Box> */}
         {
           currentItem === itemMap.BOOKMARKS ? <BookmarksManager></BookmarksManager> : null
         }

@@ -29,6 +29,7 @@
     "@types/react": "18.2.48",
     "@types/react-dom": "18.2.18",
     "api-types": "workspace:*",
+    "analysis-tags": "workspace:*",
     "prettier": "3.2.4",
     "typescript": "5.3.3"
   },
