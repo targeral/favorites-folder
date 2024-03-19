@@ -37,16 +37,22 @@ const BookmarkCard = () => {
       const apiKey = await instance.get(StorageKeyHash.GEMINI_API_KEY);
       console.info('apiKey', apiKey);
       const { data } = await sendToBackground({
-        name: 'get-tags',
+        name: 'ai-tags',
         body: {
           url,
           apiKey
         }
       });
       console.info('tags', tags);
-      setTags(data.tags);
-      setAppearFetchTagLoading(false);
-    }
+      return tags;
+    };
+    const getTagsByUrl = async ({ url }) => {
+      const { tags } = await sendToBackground<{ url: string }, { tags: ITagItem[] }>({
+        name: 'get-tags-from-storage',
+        body: { url }
+      });
+      return tags;
+    };
     // 使用 document.title 获取当前页面的标题信息
     const main = async () => {
         const currentUrl = await getCurrentTabUrl();
@@ -55,9 +61,13 @@ const BookmarkCard = () => {
         setBookmarkAction(isBookmarked ? BookmarkAction.MODIFY : BookmarkAction.CREATE);
         setActionText(isBookmarked ? '修改' : '创建');
         if (!isBookmarked) {
-          await analyzeTags({ url: currentUrl });
+          const tags = await analyzeTags({ url: currentUrl });
+          setTags(tags);
+          setAppearFetchTagLoading(false);
         } else {
           setAppearFetchTagLoading(false);
+          const tags = await getTagsByUrl({ url: currentUrl });
+          setTags(tags);
         }
     };
     main();
@@ -104,10 +114,17 @@ const BookmarkCard = () => {
       });
       console.info(result);
     } else if (bookmarkAction === BookmarkAction.MODIFY) {
-      // TODO
+      console.info('updated tags', tags);
+      await sendToBackground<{ url: string; tags: ITagItem[] }, {}>({
+        name: 'update-bookmark-tags',
+        body: {
+          url: websiteUrl,
+          tags,
+        }
+      })
     }
 
-    window.close();
+    // window.close();
   };
 
   const handleRemove = async () => {
