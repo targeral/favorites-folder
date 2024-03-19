@@ -4,13 +4,12 @@ import { GithubStorage } from 'github-store';
 import { findBookmarkByUrl } from "~chrome-utils";
 import { StorageKeyHash, getStorage } from '~storage'
 
-const addBookmark = async (bookmark: IBookmark) => {
+const getTags = async ({ id }: {id: string}) => {
   const instance = getStorage();
   const email = await instance.get(StorageKeyHash.EMAIL);
   const token = await instance.get(StorageKeyHash.TOKEN);
   const owner = await instance.get(StorageKeyHash.OWNER);
   const repo = await instance.get(StorageKeyHash.REPO);
-  console.info(email);
 
   const gs = new GithubStorage({
     token,
@@ -21,22 +20,18 @@ const addBookmark = async (bookmark: IBookmark) => {
     filename: "data.json",
     branch: "main"
   });
-  const result = await gs.addBookmark(bookmark);
+  const result = await gs.getTagsByBookmarkId({ id });
   return result;
 }
  
 const handler: PlasmoMessaging.MessageHandler = async (req, res) => {
-  const { url, tags } = req.body;
+  const { url } = req.body;
   const browserBookmark = await findBookmarkByUrl(url);
-  const result = await addBookmark({
+  const result = await getTags({
     id: browserBookmark.id,
-    title: browserBookmark.title,
-    tags,
-    url,
-    dateAdded: browserBookmark.dateAdded
   });
  
-  res.send(result);
+  res.send({ tags: result.tags });
 }
  
 export default handler

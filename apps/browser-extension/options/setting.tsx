@@ -21,6 +21,7 @@ import { sendToBackground } from "@plasmohq/messaging"
 import { useStorage } from "@plasmohq/storage/hook"
 
 import { getStorage, StorageKeyHash } from "~storage/index"
+import type { IBookmark, ITagItem } from "api-types";
 
 const instance = getStorage()
 
@@ -89,8 +90,9 @@ function Settings() {
 
   const handleSyncBookmarkData = async () => {
     const gs = getGS()
-    const { bookmarks } = await sendToBackground({ name: "get-bookmarks" })
-    const { message } = await gs.syncBookmarks(bookmarks)
+    const { bookmarks } = await sendToBackground<{}, { bookmarks: IBookmark[]}>({ name: "get-bookmarks" });
+    console.info('bookmarks', bookmarks);
+    const { message } = await gs.syncBookmarks(bookmarks);
     setOpen(true)
     if (message === "success") {
       setSnackbarContent("同步成功")
@@ -120,19 +122,21 @@ function Settings() {
   }
 
   const handleTest = async () => {
-    const gs = getGS()
-    const result = await gs.addBookmark({
-      tags: [],
-      id: 1,
-      title: "测试",
-      url: "xxxx"
-    })
-    if (result.status === "success") {
-      alert("添加成功")
-    } else {
-      alert("添加失败")
-      console.info(result.error)
-    }
+    // const result = await gs.addBookmark({
+    //   tags: [],
+    //   id: 1,
+    //   title: "测试",
+    //   url: "xxxx"
+    // })
+    // if (result.status === "success") {
+    //   alert("添加成功")
+    // } else {
+    //   alert("添加失败")
+    //   console.info(result.error)
+    // }
+    const gs = getGS();
+    const result = await gs.getTagsByBookmarkId({id: "40"});
+    console.info(result);
   }
 
   const handleClose = (

@@ -1,16 +1,15 @@
 import type { PlasmoMessaging } from "@plasmohq/messaging"
-import type { IBookmark } from "api-types";
+import type { IBookmark, ITagItem } from "api-types";
 import { GithubStorage } from 'github-store';
 import { findBookmarkByUrl } from "~chrome-utils";
 import { StorageKeyHash, getStorage } from '~storage'
 
-const addBookmark = async (bookmark: IBookmark) => {
+const updateTags = async ({ id, newTags }: {id: string; newTags: ITagItem[]}) => {
   const instance = getStorage();
   const email = await instance.get(StorageKeyHash.EMAIL);
   const token = await instance.get(StorageKeyHash.TOKEN);
   const owner = await instance.get(StorageKeyHash.OWNER);
   const repo = await instance.get(StorageKeyHash.REPO);
-  console.info(email);
 
   const gs = new GithubStorage({
     token,
@@ -21,19 +20,16 @@ const addBookmark = async (bookmark: IBookmark) => {
     filename: "data.json",
     branch: "main"
   });
-  const result = await gs.addBookmark(bookmark);
+  const result = await gs.modifyTagsByBookmarkId({ id, newTags });
   return result;
 }
  
 const handler: PlasmoMessaging.MessageHandler = async (req, res) => {
-  const { url, tags } = req.body;
+  const { url, tags: newTags } = req.body;
   const browserBookmark = await findBookmarkByUrl(url);
-  const result = await addBookmark({
+  const result = await updateTags({
     id: browserBookmark.id,
-    title: browserBookmark.title,
-    tags,
-    url,
-    dateAdded: browserBookmark.dateAdded
+    newTags
   });
  
   res.send(result);

@@ -1,6 +1,6 @@
 export interface ITagItem {
     name: string;
-    source: "AI" | "USER"
+    source: "AI" | "USER" | "SYSTEM"
 }
 
 export interface IBookmark {
@@ -8,5 +8,6 @@ export interface IBookmark {
     url: string;
     title: string;
     tags: ITagItem[];
+    dateAdded: number;
 }
 
