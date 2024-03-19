@@ -12,5 +12,5 @@ export const getStorage = () => {
     return new Storage({
         area: "local",
         copiedKeyList: Object.values(StorageKeyHash)
-    })
+    });
 }
