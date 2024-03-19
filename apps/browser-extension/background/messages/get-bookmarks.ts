@@ -1,11 +1,13 @@
 import type { PlasmoMessaging } from "@plasmohq/messaging"
-const flattenBookmarks = (nodes, parentTitle = "") => {
-    let flatList = []
+import type { IBookmark, ITagItem } from "api-types";
+
+const flattenBookmarks = (nodes: chrome.bookmarks.BookmarkTreeNode[], parentTitle = "") => {
+    let flatList: IBookmark[] = []
     nodes.forEach((node) => {
       if (node.children) {
         flatList = flatList.concat(flattenBookmarks(node.children, node.title))
       } else if (node.url) {
-        flatList.push({ ...node, tags: parentTitle ? [parentTitle] : [] })
+        flatList.push({ dateAdded: node.dateAdded, title: node.title, url: node.url, id: node.id, tags: parentTitle ? [{name: parentTitle, source: "SYSTEM" }] : [] })
       }
     })
     return flatList
@@ -17,9 +19,7 @@ const sortBookmarksByDate = (bookmarks) => {
 
 const handler: PlasmoMessaging.MessageHandler = async (_, res) => {
     const bookmarkTreeNodes = await chrome.bookmarks.getTree();
-    const flatBookmarks = flattenBookmarks(bookmarkTreeNodes).map(
-        (bookmark) => ({ ...bookmark, newTag: "" })
-    );
+    const flatBookmarks = flattenBookmarks(bookmarkTreeNodes);
     const sortedBookmarks = sortBookmarksByDate(flatBookmarks);
 
     res.send({ bookmarks: sortedBookmarks });

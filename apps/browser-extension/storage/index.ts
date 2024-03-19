@@ -5,7 +5,8 @@ export const StorageKeyHash = {
     REPO: "REPO",
     OWNER: "OWNER",
     EMAIL: "EMAIL",
-    GEMINI_API_KEY: "GEMINI_API_KEY"
+    GEMINI_API_KEY: "GEMINI_API_KEY",
+    TAGS: "TAGS",
 }
 
 export const getStorage = () => {

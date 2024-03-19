@@ -1,6 +1,6 @@
-import axios from 'axios';
+// import axios from 'axios';
 import debugFactory from 'debug';
-import type { IBookmark } from 'api-types';
+import type { IBookmark, ITagItem } from 'api-types';
 import { Github, GithubOptions } from './github';
 import { transformBookmarksToString } from './utils';
 
@@ -10,7 +10,7 @@ export interface IGithubStorageOptions extends GithubOptions {
   branch: string;
 }
 
-const debug = debugFactory('GITHUB_STORAGE');
+export const debug = debugFactory('GITHUB_STORAGE');
 
 export class GithubStorage extends Github {
   #storageOptions: IGithubStorageOptions;
@@ -65,18 +65,124 @@ export class GithubStorage extends Github {
     // Empty
   }
 
-  async getBookmarks() {
-    const base = 'https://github.com';
-    const url = `${base}/${this.options.owner}/${this.options.repo}/blob/${
-      this.#storageOptions.branch
-    }/${this.#getFilePath()}`;
+  async getBookmarks(): Promise<{
+    status: 'success' | 'fail';
+    message?: string;
+    bookmarks: IBookmark[];
+  }> {
+    // const base = 'https://raw.githubusercontent.com/';
+    // const url = `${base}/${this.options.owner}/${this.options.repo}/${
+    //   this.#storageOptions.branch
+    // }/${this.#getFilePath()}`;
 
-    const response = await axios({
-      method: 'GET',
-      url,
-      responseType: 'json',
+    // const response = await axios({
+    //   method: 'GET',
+    //   url,
+    //   responseType: 'json',
+    // });
+    const filePath = this.#getFilePath();
+    const result = await this.getContentByFilePath({
+      filePath,
+      branch: 'main',
     });
-    debug(response);
+    if (result.content) {
+      const bookmarks = JSON.parse(result.content);
+      return {
+        status: 'success',
+        bookmarks,
+      };
+    }
+
+    return {
+      status: 'fail',
+      bookmarks: [],
+      message: `未获取到${this.#getFilePath()}文件数据`,
+    };
+    // debug(response);
+    // if (response.status === 200) {
+    //   return {
+    //     status: 'success',
+    //     bookmarks: response.data,
+    //   };
+    // }
+
+    // return {
+    //   status: 'fail',
+    //   message: JSON.stringify(response.data),
+    //   bookmarks: [],
+    // };
+  }
+
+  async getTagsByBookmarkId({ id }: { id: string | number }): Promise<{
+    status: 'success' | 'fail';
+    tags: ITagItem[];
+    message?: string;
+  }> {
+    const { status, bookmarks } = await this.getBookmarks();
+    if (status === 'fail') {
+      return {
+        status: 'fail',
+        tags: [],
+        message: 'Get bookmarks fail',
+      };
+    }
+
+    const bookmark = bookmarks.find(bookmark => bookmark.id === id);
+
+    if (!bookmark) {
+      return {
+        status: 'fail',
+        tags: [],
+        message: 'Can`t find this bookmark',
+      };
+    }
+
+    return {
+      status: 'success',
+      tags: bookmark.tags,
+    };
+  }
+
+  async modifyTagsByBookmarkId({
+    id,
+    newTags,
+  }: {
+    id: string | number;
+    newTags: ITagItem[];
+  }): Promise<{
+    status: 'success' | 'fail';
+    message?: string;
+  }> {
+    const { status, bookmarks } = await this.getBookmarks();
+    if (status === 'fail') {
+      return {
+        status: 'fail',
+        message: 'Get bookmarks fail',
+      };
+    }
+
+    const bookmarkIndex = bookmarks.findIndex(bookmark => bookmark.id === id);
+    console.info('bookmarkIndex', bookmarkIndex);
+
+    if (bookmarkIndex === -1) {
+      return {
+        status: 'fail',
+        message: 'Can`t find this bookmark',
+      };
+    }
+
+    bookmarks[bookmarkIndex].tags = newTags;
+    const result = await this.syncBookmarks(bookmarks);
+
+    if (result.message === 'success') {
+      return {
+        status: 'success',
+      };
+    }
+
+    return {
+      status: 'fail',
+    };
   }
 
   async syncBookmarks(bookmarks: IBookmark[]) {

@@ -2,24 +2,76 @@ import React, { useState, useEffect } from 'react';
 import { TextField, Chip, List, ListItem, ListItemIcon, ListItemText, Avatar } from '@mui/material';
 import BookmarkIcon from '@mui/icons-material/Bookmark';
 import { sendToBackground } from "@plasmohq/messaging"
+import { useStorage } from "@plasmohq/storage/hook"
+
+import { getStorage, StorageKeyHash } from "~storage/index"
+import { GithubStorage } from "github-store"
+import type { IBookmark, ITagItem } from 'api-types';
 // import moment from 'moment';
 
+const instance = getStorage()
+
 const BookmarkManager = () => {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [tagsFilter, setTagsFilter] = useState([]);
-  const [bookmarks, setBookmarks] = useState([]);
+  const [searchTerm, setSearchTerm] = useState<string>('');
+  const [tagsFilter, setTagsFilter] = useState<ITagItem[]>([]);
+  const [bookmarks, setBookmarks] = useState<IBookmark[]>([]);
+
+  const [token, setToken] = useStorage<string>(
+    {
+      key: StorageKeyHash.TOKEN,
+      instance
+    },
+    ""
+  )
+  const [repo, setRepo] = useStorage<string>(
+    {
+      key: StorageKeyHash.REPO,
+      instance
+    },
+    ""
+  )
+  const [owner, setOwner] = useStorage<string>(
+    {
+      key: StorageKeyHash.OWNER,
+      instance
+    },
+    ""
+  )
+  const [email, setEmail] = useStorage<string>(
+    {
+      key: StorageKeyHash.EMAIL,
+      instance
+    },
+    ""
+  )
+  const [geminiApiKey, setGeminiApiKey] = useStorage<string>({
+    key: StorageKeyHash.GEMINI_API_KEY,
+    instance
+  })
 
   useEffect(() => {
     // 由于安全限制，此处模拟从 background script 获取书签数据
     // 实际应使用 chrome.bookmarks.getTree
     const main = async () => {
-        const { bookmarks } = await sendToBackground({ name: 'get-bookmarks' });
+        // const { bookmarks } = await sendToBackground({ name: 'get-bookmarks' });
+      if (token && repo && owner && email) {
+        const gs = new GithubStorage({
+          token,
+          repo,
+          owner,
+          email,
+          storageFolder: "favorites",
+          filename: "data.json",
+          branch: "main"
+        })
+        const { bookmarks } = await gs.getBookmarks();
         console.info('bookmarkTreeNodes', bookmarks);
         setBookmarks(bookmarks);
+      }
     };
     main();
     // flattenBookmarks(mockBookmarksData);
-  }, []);
+  }, [token, repo, owner, email]);
 
 //   const flattenBookmarks = (bookmarksData, parentTitle = '') => {
 //     let flatBookmarks = [];
@@ -71,7 +123,7 @@ const BookmarkManager = () => {
       />
       <div>
         {tagsFilter.map((tag, index) => (
-          <Chip key={index} label={tag} />
+          <Chip key={index} label={tag.name} />
         ))}
       </div>
       <List>
@@ -85,7 +137,7 @@ const BookmarkManager = () => {
             <ListItemText
               primary={bookmark.title}
               secondary={bookmark.tags.map((tag, index) => (
-                <Chip key={index} label={tag} />
+                <Chip key={index} label={tag.name} />
               ))}
             />
           </ListItem>
