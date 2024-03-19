@@ -4,7 +4,7 @@ export interface ITagItem {
 }
 
 export interface IBookmark {
-    id: number;
+    id: number | string;
     url: string;
     title: string;
     tags: ITagItem[];

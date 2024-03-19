@@ -1,16 +1,28 @@
+import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown"
+import ArrowForwardIosSharpIcon from '@mui/icons-material/ArrowForwardIosSharp';
 import CloseIcon from "@mui/icons-material/Close"
-import { Box, Button, Snackbar, Stack, TextField } from "@mui/material"
-import IconButton from "@mui/material/IconButton"
+import {
+  Accordion,
+  AccordionDetails,
+  AccordionSummary,
+  Box,
+  Button,
+  IconButton,
+  Snackbar,
+  Stack,
+  Switch,
+  TextField,
+  Typography
+} from "@mui/material"
 import { GithubStorage } from "github-store"
 import React, { useCallback, useEffect, useState } from "react"
 
 import { sendToBackground } from "@plasmohq/messaging"
-import { useStorage } from "@plasmohq/storage/hook";
+import { useStorage } from "@plasmohq/storage/hook"
 
-import { StorageKeyHash, getStorage } from '~storage/index';
+import { getStorage, StorageKeyHash } from "~storage/index"
 
-const instance = getStorage();
-
+const instance = getStorage()
 
 function Settings() {
   const [token, setToken] = useStorage<string>(
@@ -40,22 +52,20 @@ function Settings() {
       instance
     },
     ""
-  );
-  const [geminiApiKey, setGeminiApiKey] = useStorage<string>(
-    {
-      key: StorageKeyHash.GEMINI_API_KEY,
-      instance,
-    }
   )
+  const [geminiApiKey, setGeminiApiKey] = useStorage<string>({
+    key: StorageKeyHash.GEMINI_API_KEY,
+    instance
+  })
 
-  const [showToken, setShowToken] = useState<boolean>(false);
-  const [open, setOpen] = useState<boolean>(false);
-  const [snackbarContent, setSnackbarContent] = useState<string>('');
+  const [showToken, setShowToken] = useState<boolean>(false)
+  const [open, setOpen] = useState<boolean>(false)
+  const [snackbarContent, setSnackbarContent] = useState<string>("")
 
   useEffect(() => {
     const main = async () => {
       const token = await instance.get(StorageKeyHash.TOKEN)
-      if (token.length > 0) {
+      if (token && token.length > 0) {
         setShowToken(false)
       } else {
         setShowToken(true)
@@ -81,11 +91,11 @@ function Settings() {
     const gs = getGS()
     const { bookmarks } = await sendToBackground({ name: "get-bookmarks" })
     const { message } = await gs.syncBookmarks(bookmarks)
-    setOpen(true);
+    setOpen(true)
     if (message === "success") {
-      setSnackbarContent('同步成功');
+      setSnackbarContent("同步成功")
     } else {
-      setSnackbarContent('同步失败，请稍后重试！');
+      setSnackbarContent("同步失败，请稍后重试！")
     }
   }
 
@@ -106,7 +116,7 @@ function Settings() {
   }
 
   const handleGeminiApiKeyChange = (event) => {
-    setGeminiApiKey(event.target.value);
+    setGeminiApiKey(event.target.value)
   }
 
   const handleTest = async () => {
@@ -152,54 +162,77 @@ function Settings() {
     <>
       <Stack direction="column" spacing={2} alignItems="center">
         <h1>设置</h1>
-        <Box
-          sx={{
-            display: "flex",
-            flexDirection: "column",
-            justifyContent: "center",
-            alignItems: "center",
-            gap: 1
-          }}>
-          <TextField
-            type={showToken ? "text" : "password"}
-            label="Github Token:"
-            value={token}
-            onChange={handleTokenChange}
-          />
-          <TextField
-            label="Github Repo:"
-            value={repo}
-            onChange={handleRepoChange}
-          />
-          <TextField
-            label="Github owner:"
-            value={owner}
-            onChange={handleOwnerChange}
-          />
-          <TextField
-            label="Owner email:"
-            value={email}
-            onChange={handleEmailChange}
-          />
-          <Button
-            variant="contained"
-            color="primary"
-            onClick={handleSyncBookmarkData}>
-            同步
-          </Button>
-        </Box>
+        <Accordion sx={{ width: '100%' }}>
+          <AccordionSummary
+            expandIcon={<ArrowDropDownIcon />}
+            aria-controls="github-content"
+            id="github-header">
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Typography>Github</Typography>
+              <Switch />
+            </Box>
+          </AccordionSummary>
+          <AccordionDetails>
+            <Box
+              sx={{
+                display: "flex",
+                flexDirection: "column",
+                justifyContent: "center",
+                alignItems: "center",
+                gap: 1
+              }}>
+              <TextField
+                type={showToken ? "text" : "password"}
+                label="Github Token:"
+                value={token}
+                onChange={handleTokenChange}
+              />
+              <TextField
+                label="Github Repo:"
+                value={repo}
+                onChange={handleRepoChange}
+              />
+              <TextField
+                label="Github owner:"
+                value={owner}
+                onChange={handleOwnerChange}
+              />
+              <TextField
+                label="Owner email:"
+                value={email}
+                onChange={handleEmailChange}
+              />
+              <Button
+                variant="contained"
+                color="primary"
+                onClick={handleSyncBookmarkData}>
+                同步
+              </Button>
+            </Box>
+          </AccordionDetails>
+        </Accordion>
+        <Accordion sx={{ width: '100%' }}>
+          <AccordionSummary
+            expandIcon={<ArrowDropDownIcon />}
+            aria-controls="gemini-content"
+            id="gemini-header">
+            <Box sx={{ display: 'flex', justifyContent: 'space-around', alignItems: 'center' }}>
+              <Typography>Google Gemini</Typography>
+              <Switch />
+            </Box>
+          </AccordionSummary>
+          <AccordionDetails>
+            <TextField
+              label="Gemini Api Key"
+              value={geminiApiKey}
+              onChange={handleGeminiApiKeyChange}
+            />
+          </AccordionDetails>
+        </Accordion>
         <Box>
           <Button variant="outlined" color="primary" onClick={handleTest}>
             测试添加书签功能
           </Button>
-        </Box>
-        <Box>
-          Google Gemini
-          <TextField
-            label="Gemini Api Key"
-            value={geminiApiKey}
-            onChange={handleGeminiApiKeyChange}
-          />
         </Box>
       </Stack>
       <Snackbar

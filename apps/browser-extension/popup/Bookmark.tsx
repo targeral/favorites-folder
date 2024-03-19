@@ -25,7 +25,7 @@ const BookmarkCard = () => {
   const [bookmarkAction, setBookmarkAction] = useState<BookmarkAction>(BookmarkAction.NONE);
   const [actionText, setActionText] = useState('');
   const [isEditingTitle, setIsEditingTitle] = useState(false);
-  const [title, setTitle] = useState('');
+  const [websiteUrl, setWebsiteUrl] = useState('');
   const [tags, setTags] = useState<ITagItem[]>([]);
   const [newTag, setNewTag] = useState<ITagItem>();
   const [editTagIndex, setEditTagIndex] = useState(null);
@@ -51,10 +51,14 @@ const BookmarkCard = () => {
     const main = async () => {
         const currentUrl = await getCurrentTabUrl();
         const isBookmarked = await checkIfBookmarked(currentUrl);
-        setTitle(currentUrl);
+        setWebsiteUrl(currentUrl);
         setBookmarkAction(isBookmarked ? BookmarkAction.MODIFY : BookmarkAction.CREATE);
         setActionText(isBookmarked ? '修改' : '创建');
-        await analyzeTags({ url: currentUrl });
+        if (!isBookmarked) {
+          await analyzeTags({ url: currentUrl });
+        } else {
+          setAppearFetchTagLoading(false);
+        }
     };
     main();
 
@@ -73,7 +77,7 @@ const BookmarkCard = () => {
   };
 
   const handleTitleChange = (event) => {
-    setTitle(event.target.value);
+    setWebsiteUrl(event.target.value);
   };
 
   const handleTagDelete = (tagToDelete) => () => {
@@ -87,9 +91,22 @@ const BookmarkCard = () => {
     setNewTag(newTag);
   };
 
-  const handleComplete = () => {
+  const handleComplete = async () => {
     // Complete bookmark creation or modification
     // TODO: 调用相关接口，同步数据
+    if (bookmarkAction === BookmarkAction.CREATE) {
+      const result = await sendToBackground({
+        name: 'add-bookmark-to-storage',
+        body: {
+          url: websiteUrl,
+          tags,
+        }
+      });
+      console.info(result);
+    } else if (bookmarkAction === BookmarkAction.MODIFY) {
+      // TODO
+    }
+
     window.close();
   };
 
@@ -152,7 +169,7 @@ const BookmarkCard = () => {
           </Typography>
           {isEditingTitle ? (
             <TextField
-              value={title}
+              value={websiteUrl}
               onChange={handleTitleChange}
               onBlur={handleTitleBlur}
               autoFocus
@@ -162,7 +179,7 @@ const BookmarkCard = () => {
             />
           ) : (
             <Typography onClick={handleTitleClick} variant="subtitle1" component="span" noWrap sx={{ maxWidth: 'calc(300px - 48px)' }}>
-              {title}
+              {websiteUrl}
             </Typography>
           )}
           <Typography variant="subtitle1" component="span" sx={{ fontWeight: 'bold' }}>
@@ -234,7 +251,7 @@ const BookmarkCard = () => {
               : null
           }
           <Button variant="contained" onClick={handleComplete}>
-            完成
+            添加标签
           </Button>
         </Box>
       </CardContent>
