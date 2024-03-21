@@ -24,13 +24,16 @@ export class GenimiAnalysis extends AIAnalysis {
     this.#model = this.#genAI.getGenerativeModel({ model: options.model });
   }
 
-  async analysis(content: string) {
+  async analysis(
+    content: string,
+    { tagsCount = 3 }: { tagsCount?: number } = {},
+  ) {
     // You need to give categories based on these that match the site.You only need to output the string containing the classification
     const prompt = endent`You will receive the html, css and text content of a website.
     Just do the task, do not mention anything about the type or structure of the data submitted.
 
     Task:
-    分析网站的类别，允许多种分类。安装以\`,\`分隔每个类别，输出一个字符串。
+    分析网站的类别，做多输出 ${tagsCount} 个分类。按照以\`,\`分隔每个类别，输出一个字符串。
 
     Website content:
     ${content}

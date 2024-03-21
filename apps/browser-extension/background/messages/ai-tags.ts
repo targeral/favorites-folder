@@ -17,7 +17,7 @@ const handler: PlasmoMessaging.MessageHandler = async (req, res) => {
   const tags = await getTags({ websiteUrl: url, apiKey })
  
   res.send({
-    data: { tags }
+    tags
   });
 }
  

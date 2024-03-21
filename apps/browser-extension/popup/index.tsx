@@ -6,12 +6,12 @@ import './index.less';
 
 
 function IndexPopup() {
-  useEffect(() => {
-    const main = async () => {
-      await sendToBackground({ name: 'popup-open' });
-    };
-    main();
-  }, []);
+  // useEffect(() => {
+  //   const main = async () => {
+  //     await sendToBackground({ name: 'popup-open' });
+  //   };
+  //   main();
+  // }, []);
 
   return (
     <Bookmark></Bookmark>

@@ -7,11 +7,11 @@ export const StorageKeyHash = {
     EMAIL: "EMAIL",
     GEMINI_API_KEY: "GEMINI_API_KEY",
     TAGS: "TAGS",
-}
+};
 
 export const getStorage = () => {
     return new Storage({
         area: "local",
         copiedKeyList: Object.values(StorageKeyHash)
     });
-}
+};
