@@ -50,6 +50,9 @@ export class Github {
         ...this.#getOwnerAndRepo(),
         path: filePath,
         ref: branch,
+        headers: {
+          'cache-control': 'no-cache',
+        },
       });
 
       if (!Array.isArray(response.data) && response.data.type === 'file') {
@@ -344,6 +347,9 @@ export class Github {
         ...this.#getOwnerAndRepo(),
         path: filePath,
         ref: branch,
+        headers: {
+          'cache-control': 'no-cache',
+        },
       });
       if (
         response.status === 200 &&
@@ -379,6 +385,9 @@ export class Github {
       ...this.#getOwnerAndRepo(),
       path: filePath,
       ref: branch,
+      headers: {
+        'cache-control': 'no-cache',
+      },
     });
     if (
       response.status === 200 &&
@@ -391,6 +400,7 @@ export class Github {
       const contentString = Buffer.from(contentBase64, 'base64').toString(
         'utf-8',
       );
+      console.info('getContentByFilePath', contentString);
       debug(contentString);
       return { content: contentString, error: null };
     }
