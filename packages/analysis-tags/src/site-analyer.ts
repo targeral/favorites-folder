@@ -13,11 +13,15 @@ export class SiteAnalyer {
   }
 
   async analyzeByGemini(options: GenimiAnalysisOptions): Promise<string[]> {
-    const ga = new GenimiAnalysis(options);
-    const content = await this.#getWebsiteContent();
-    const result = await ga.analysis(content);
-    console.info('result', result);
-    return result.split(',');
+    // const ga = new GenimiAnalysis(options);
+    // const content = await this.#getWebsiteContent();
+    // const result = await ga.analysis(content);
+    // console.info('result', result);
+    // return result.split(',');
+    await new Promise(resolve => {
+      setTimeout(() => resolve({}), 1000);
+    });
+    return ['mock1', 'mock2'];
   }
 
   async #getWebsiteContent() {
