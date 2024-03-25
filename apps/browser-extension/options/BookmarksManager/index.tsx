@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { TextField, Chip, List, ListItem, ListItemIcon, ListItemText, Avatar } from '@mui/material';
+import { TextField, Chip, List, ListItem, ListItemIcon, ListItemText, Avatar, Box } from '@mui/material';
 import BookmarkIcon from '@mui/icons-material/Bookmark';
 import { sendToBackground } from "@plasmohq/messaging"
 import { useStorage } from "@plasmohq/storage/hook"
@@ -7,6 +7,8 @@ import { useStorage } from "@plasmohq/storage/hook"
 import { getStorage, StorageKeyHash } from "~storage/index"
 import { GithubStorage } from "github-store"
 import type { IBookmark, ITagItem } from 'api-types';
+import { BookmarkEditor } from './BookmarkEditor';
+
 // import moment from 'moment';
 
 const instance = getStorage()
@@ -122,8 +124,8 @@ const BookmarkManager = () => {
         onKeyPress={handleSearchKeyPress}
       />
       <div>
-        {tagsFilter.map((tag, index) => (
-          <Chip key={index} label={tag.name} />
+        {tagsFilter.map((tag) => (
+          <Chip key={tag.name} label={tag.name} />
         ))}
       </div>
       <List>
@@ -136,9 +138,16 @@ const BookmarkManager = () => {
             </ListItemIcon>
             <ListItemText
               primary={bookmark.title}
-              secondary={bookmark.tags.map((tag, index) => (
-                <Chip key={index} label={tag.name} />
-              ))}
+              secondary={
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  {
+                    bookmark.tags.map((tag) => (
+                      <Chip key={tag.name} label={tag.name} />
+                    ))
+                  }
+                  <BookmarkEditor onTagsUpdated={() => console.info('update')} title={bookmark.title} tags={bookmark.tags}></BookmarkEditor>
+                </Box>
+              }
             />
           </ListItem>
         ))}

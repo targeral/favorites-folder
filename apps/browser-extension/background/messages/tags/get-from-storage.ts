@@ -2,9 +2,17 @@ import type { PlasmoMessaging } from "@plasmohq/messaging"
 import type { IBookmark, ITagItem } from "api-types";
 import { GithubStorage } from 'github-store';
 import { findBookmarkByUrl } from "~chrome-utils";
-import { StorageKeyHash, getStorage } from '~storage'
+import { StorageKeyHash, getStorage } from '~storage';
 
-const updateTags = async ({ id, newTags }: {id: string; newTags: ITagItem[]}) => {
+export interface RequestBody {
+  url: string;
+}
+
+export interface ResponseBody {
+  tags: ITagItem[];
+}
+
+const getTags = async ({ id }: {id: string}) => {
   const instance = getStorage();
   const email = await instance.get(StorageKeyHash.EMAIL);
   const token = await instance.get(StorageKeyHash.TOKEN);
@@ -20,19 +28,18 @@ const updateTags = async ({ id, newTags }: {id: string; newTags: ITagItem[]}) =>
     filename: "data.json",
     branch: "main"
   });
-  const result = await gs.modifyTagsByBookmarkId({ id, newTags });
+  const result = await gs.getTagsByBookmarkId({ id });
   return result;
 }
  
-const handler: PlasmoMessaging.MessageHandler = async (req, res) => {
-  const { url, tags: newTags } = req.body;
+const handler: PlasmoMessaging.MessageHandler<RequestBody, ResponseBody> = async (req, res) => {
+  const { url } = req.body;
   const browserBookmark = await findBookmarkByUrl(url);
-  const result = await updateTags({
+  const result = await getTags({
     id: browserBookmark.id,
-    newTags
   });
  
-  res.send(result);
+  res.send({ tags: result.tags });
 }
  
 export default handler

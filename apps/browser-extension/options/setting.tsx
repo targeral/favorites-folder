@@ -90,7 +90,7 @@ function Settings() {
 
   const handleSyncBookmarkData = async () => {
     const gs = getGS()
-    const { bookmarks } = await sendToBackground<{}, { bookmarks: IBookmark[]}>({ name: "get-bookmarks" });
+    const { bookmarks } = await sendToBackground<{}, { bookmarks: IBookmark[]}>({ name: "bookmark/get-from-browser" });
     console.info('bookmarks', bookmarks);
     const { message } = await gs.syncBookmarks(bookmarks);
     setOpen(true)
