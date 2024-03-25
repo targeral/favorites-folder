@@ -35,3 +35,9 @@ export const removeBookmark = async (url: string) => {
         };
     }
 }
+
+export const createBookmarkForCurrentTab = async () => {
+    const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+    const currentTab = tabs[0]; 
+    await createBookmark(currentTab);
+}

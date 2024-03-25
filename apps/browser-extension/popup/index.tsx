@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import Bookmark from './Bookmark';
+import { Bookmark } from './Bookmark';
 import { sendToBackground } from "@plasmohq/messaging"
 
 import './index.less';

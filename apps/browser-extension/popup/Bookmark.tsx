@@ -1,5 +1,7 @@
 import AddIcon from "@mui/icons-material/Add"
+import LoadingButton from "@mui/lab/LoadingButton"
 import {
+  Alert,
   Box,
   Button,
   Card,
@@ -8,6 +10,7 @@ import {
   CircularProgress,
   IconButton,
   Skeleton,
+  Snackbar,
   TextField,
   Typography
 } from "@mui/material"
@@ -18,14 +21,13 @@ import { sendToBackground } from "@plasmohq/messaging"
 import { useStorage } from "@plasmohq/storage/hook"
 
 import { getStorage, StorageKeyHash } from "~storage/index"
+import { log } from "~utils/log"
 
-import { checkIfBookmarked } from "../chrome-utils"
-
-const getCurrentTab = async () => {
-  const tabs = await chrome.tabs.query({ active: true, currentWindow: true })
-  const currentTab = tabs[0]
-  return currentTab
-}
+import {
+  checkIfBookmarked,
+  checkIsNewTab,
+  getCurrentActiveTab
+} from "../chrome-utils"
 
 enum BookmarkAction {
   CREATE,
@@ -35,8 +37,8 @@ enum BookmarkAction {
 
 const instance = getStorage()
 
-const BookmarkCard = () => {
-  console.info("run BookmarkCard")
+const Bookmark = () => {
+  log("run BookmarkCard")
   const [bookmarkAction, setBookmarkAction] = useState<BookmarkAction>(
     BookmarkAction.NONE
   )
@@ -50,19 +52,31 @@ const BookmarkCard = () => {
   const [isAddingTag, setIsAddingTag] = useState(false)
   const [appearFetchTagLoading, setAppearFetchTagLoading] =
     useState<boolean>(true)
+  const [newTab, setNewTab] = useState<boolean>(true)
+  const [saveBtnLoading, setSaveBtnLoading] = useState<boolean>(false)
+  const [appearSnackbar, setAppearSnackbar] = useState<boolean>(false)
+  const [snackBarContent, setSnackBarContent] = useState<string>("")
+
+  const [autoBookmark] = useStorage<boolean>(
+    {
+      key: StorageKeyHash.SETTING_AUTO_BOOKMARK,
+      instance
+    },
+    false
+  )
 
   useEffect(() => {
     const analyzeTags = async ({ url }) => {
       const apiKey = await instance.get(StorageKeyHash.GEMINI_API_KEY)
-      console.info("apiKey", apiKey)
+      log("apiKey", apiKey)
       const { tags } = await sendToBackground({
-        name: "ai-tags",
+        name: "tags/generate",
         body: {
           url,
           apiKey
         }
       })
-      console.info("tags", tags)
+      log("tags", tags)
       return tags
     }
     const getTagsByUrl = async ({ url }) => {
@@ -70,20 +84,25 @@ const BookmarkCard = () => {
         { url: string },
         { tags: ITagItem[] }
       >({
-        name: "get-tags-from-storage",
+        name: "tags/get-from-storage",
         body: { url }
       })
       return tags
     }
     const main = async () => {
-      const currentTab = await getCurrentTab()
+      const currentTab = await getCurrentActiveTab()
+      const isNewTab = checkIsNewTab(currentTab)
       const { url, title } = currentTab
       const isBookmarked = await checkIfBookmarked(url)
-      console.info("isBookmarked", isBookmarked)
+      log("isBookmarked", isBookmarked)
 
-      if (!isBookmarked) {
-        await sendToBackground({ name: "popup-open" })
+      if (isNewTab) {
+        setNewTab(true)
+        setAppearFetchTagLoading(false)
+        return
       }
+
+      setNewTab(false)
       setWebsiteUrl(url)
       setWebsiteTitle(title)
       setBookmarkAction(
@@ -96,16 +115,26 @@ const BookmarkCard = () => {
         setTags(tags)
       } else {
         const tags = await getTagsByUrl({ url })
-        console.info("get exist tags", tags)
+        log("get exist tags", tags)
         setTags(tags)
       }
       setAppearFetchTagLoading(false)
     }
     main()
-
-    // Fetch current bookmark details using chrome.bookmarks API
     // Set title and tags based on fetched data
   }, [])
+
+  useEffect(() => {
+    const autoBookmarkFun = async () => {
+      if (!newTab && bookmarkAction === BookmarkAction.CREATE) {
+        await sendToBackground({ name: "popup-open" })
+      }
+    }
+    log("autoBookmark", autoBookmark)
+    if (autoBookmark) {
+      autoBookmarkFun()
+    }
+  }, [newTab, bookmarkAction, autoBookmark])
 
   const handleTitleClick = () => {
     setIsEditingTitle(true)
@@ -132,34 +161,44 @@ const BookmarkCard = () => {
   }
 
   const handleComplete = async () => {
-    // Complete bookmark creation or modification
-    // TODO: 调用相关接口，同步数据
+    setSaveBtnLoading(true)
     if (bookmarkAction === BookmarkAction.CREATE) {
       const result = await sendToBackground({
-        name: "add-bookmark-to-storage",
+        name: "bookmark/add",
         body: {
-          url: websiteUrl,
           tags
         }
       })
-      console.info(result)
+      if (result.status === "success") {
+        setSnackBarContent("保存成功！")
+      } else {
+        setSnackBarContent("保存失败，请重试！");
+      }
     } else if (bookmarkAction === BookmarkAction.MODIFY) {
-      console.info("updated tags", tags)
-      await sendToBackground<{ url: string; tags: ITagItem[] }, {}>({
-        name: "update-bookmark-tags",
+      const result = await sendToBackground<
+        { url: string; tags?: ITagItem[]; title?: string; },
+        { status: "success" | "fail"; message?: string }
+      >({
+        name: "bookmark/update",
         body: {
           url: websiteUrl,
-          tags
+          tags,
+          title: websiteTitle,
         }
       })
+      if (result.status === "success") {
+        setSnackBarContent("更新成功！");
+      } else {
+        setSnackBarContent(`更新失败，请重试！`);
+      }
     }
-
-    window.close()
+    setSaveBtnLoading(false)
+    setAppearSnackbar(true)
   }
 
   const handleRemove = async () => {
     const result = await sendToBackground({
-      name: "remove-bookmark"
+      name: 'bookmark/remove'
     })
 
     if (result.message) {
@@ -206,131 +245,156 @@ const BookmarkCard = () => {
     setEditTagIndex(tags.length)
   }
 
+  const handleSnackBarClose = (
+    event?: React.SyntheticEvent | Event,
+    reason?: string
+  ) => {
+    if (reason === "clickaway") {
+      return
+    }
+    setAppearSnackbar(false)
+    window.close();
+  }
+
   return (
     <Card sx={{ width: 448, minHeight: 233 }}>
-      <CardContent>
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-          <Typography
-            variant="subtitle1"
-            component="span"
-            sx={{ fontWeight: "bold" }}>
-            {actionText}
-          </Typography>
-          {isEditingTitle ? (
-            <TextField
-              value={websiteTitle}
-              onChange={handleTitleChange}
-              onBlur={handleTitleBlur}
-              autoFocus
-              fullWidth
-              size="small"
-              sx={{ maxWidth: "calc(300px - 48px)" }} // 48px 是操作和结尾内容的宽度估算
-            />
-          ) : (
-            <Typography
-              onClick={handleTitleClick}
-              variant="subtitle1"
-              component="span"
-              noWrap
-              sx={{ maxWidth: "calc(300px - 48px)" }}>
-              {websiteTitle}
+      {newTab ? (
+        <div>此处正在施工🚧</div>
+      ) : (
+        <>
+          <CardContent>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+              <Typography
+                variant="subtitle1"
+                component="span"
+                sx={{ fontWeight: "bold" }}>
+                {actionText}
+              </Typography>
+              {isEditingTitle ? (
+                <TextField
+                  value={websiteTitle}
+                  onChange={handleTitleChange}
+                  onBlur={handleTitleBlur}
+                  autoFocus
+                  fullWidth
+                  size="small"
+                  sx={{ maxWidth: "calc(300px - 48px)" }} // 48px 是操作和结尾内容的宽度估算
+                />
+              ) : (
+                <Typography
+                  onClick={handleTitleClick}
+                  variant="subtitle1"
+                  component="span"
+                  noWrap
+                  sx={{ maxWidth: "calc(300px - 48px)" }}>
+                  {websiteTitle}
+                </Typography>
+              )}
+              <Typography
+                variant="subtitle1"
+                component="span"
+                sx={{ fontWeight: "bold" }}>
+                书签
+              </Typography>
+            </Box>
+            <Typography variant="body1" sx={{ mt: 2 }}>
+              当前书签的推荐分类为：
             </Typography>
-          )}
-          <Typography
-            variant="subtitle1"
-            component="span"
-            sx={{ fontWeight: "bold" }}>
-            书签
-          </Typography>
-        </Box>
-        <Typography variant="body1" sx={{ mt: 2 }}>
-          当前书签的推荐分类为：
-        </Typography>
-        {/* <div> */}
-        <Box
-          sx={{
-            display: "flex",
-            flexWrap: "wrap",
-            gap: 1,
-            alignItems: "center",
-            mt: 2
-          }}>
-          <>
-            {appearFetchTagLoading ? (
-              <Skeleton
-                variant="rounded"
-                sx={{ height: "30px", flex: "1 1 auto" }}
-                animation="wave"
-              />
-            ) : (
-              tags.map((tag, index) => (
-                <div key={index} onDoubleClick={handleTagDoubleClick(index)}>
-                  {editTagIndex === index ? (
-                    <TextField
-                      value={tag.name}
-                      onChange={handleTagChange(index)}
-                      onBlur={handleTagBlur(index)}
-                      onKeyDown={handleTagKeyPress(index)}
-                      autoFocus
-                      size="small"
-                      sx={{ width: 100 }}
-                    />
-                  ) : (
-                    <Chip
-                      label={tag.name}
-                      onDelete={handleTagDelete(tag)}
-                      // onDoubleClick={handleTagDoubleClick(index)}
-                    />
-                  )}
-                </div>
-                // <Chip
-                //   key={index}
-                //   label={tag}
-                //   onDelete={handleTagDelete(tag)}
-                //   deleteIcon={<CloseIcon />}
-                //   sx={{ mr: 1, mt: 1 }}
-                // />
-              ))
-            )}
-            <IconButton onClick={handleAddTagClick} size="small">
-              <AddIcon />
-            </IconButton>
-          </>
-        </Box>
-
-        {/* </div> */}
-        {/* <div>
-          <TextField
-            value={newTag}
-            onChange={handleNewTagChange}
-            placeholder="添加分类"
-            size="small"
-            sx={{ mt: 1 }}
-          />
-        </div> */}
-      </CardContent>
-      <CardContent
-        sx={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center"
-        }}>
-        <Button variant="outlined" onClick={handleManageClick}>
-          管理书签
-        </Button>
-        <Box display="flex" alignItems="center" gap={2}>
-          {bookmarkAction === BookmarkAction.MODIFY ? (
-            <Button variant="contained" color="warning" onClick={handleRemove}>
-              移除
+            <Box
+              sx={{
+                display: "flex",
+                flexWrap: "wrap",
+                gap: 1,
+                alignItems: "center",
+                mt: 2
+              }}>
+              <>
+                {appearFetchTagLoading ? (
+                  <Skeleton
+                    variant="rounded"
+                    sx={{ height: "30px", flex: "1 1 auto" }}
+                    animation="wave"
+                  />
+                ) : (
+                  tags.map((tag, index) => (
+                    <div
+                      key={index}
+                      onDoubleClick={handleTagDoubleClick(index)}>
+                      {editTagIndex === index ? (
+                        <TextField
+                          value={tag.name}
+                          onChange={handleTagChange(index)}
+                          onBlur={handleTagBlur(index)}
+                          onKeyDown={handleTagKeyPress(index)}
+                          autoFocus
+                          size="small"
+                          sx={{ width: 100 }}
+                        />
+                      ) : (
+                        <Chip
+                          label={tag.name}
+                          onDelete={handleTagDelete(tag)}
+                          // onDoubleClick={handleTagDoubleClick(index)}
+                        />
+                      )}
+                    </div>
+                    // <Chip
+                    //   key={index}
+                    //   label={tag}
+                    //   onDelete={handleTagDelete(tag)}
+                    //   deleteIcon={<CloseIcon />}
+                    //   sx={{ mr: 1, mt: 1 }}
+                    // />
+                  ))
+                )}
+                <IconButton onClick={handleAddTagClick} size="small">
+                  <AddIcon />
+                </IconButton>
+              </>
+            </Box>
+          </CardContent>
+          <CardContent
+            sx={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center"
+            }}>
+            <Button variant="outlined" onClick={handleManageClick}>
+              管理书签
             </Button>
-          ) : null}
-          <Button variant="contained" onClick={handleComplete}>
-            {bookmarkAction === BookmarkAction.MODIFY ? "修改标签" : "添加标签"}
-          </Button>
-        </Box>
-      </CardContent>
+            <Box display="flex" alignItems="center" gap={2}>
+              {bookmarkAction === BookmarkAction.MODIFY ? (
+                <Button
+                  variant="contained"
+                  color="warning"
+                  onClick={handleRemove}>
+                  移除
+                </Button>
+              ) : null}
+              <LoadingButton
+                loading={saveBtnLoading}
+                variant="contained"
+                onClick={handleComplete}>
+                <span>
+                  {bookmarkAction === BookmarkAction.MODIFY ? "更新" : "保存"}
+                </span>
+              </LoadingButton>
+            </Box>
+          </CardContent>
+        </>
+      )}
+      <Snackbar
+        anchorOrigin={{ vertical: "top", horizontal: "center" }}
+        open={appearSnackbar}
+        autoHideDuration={2000}
+        message="Success"
+        onClose={handleSnackBarClose}>
+        <Alert severity="success" sx={{ width: "50%" }}>
+          {snackBarContent}
+        </Alert>
+      </Snackbar>
     </Card>
   )
 }
 
-export default BookmarkCard
+export { Bookmark }

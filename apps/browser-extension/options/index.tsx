@@ -9,17 +9,19 @@ import ListItemButton from '@mui/material/ListItemButton';
 import ListItemText from '@mui/material/ListItemText';
 import Typography from '@mui/material/Typography';
 
-import Settings from './setting';
-
-import BookmarksManager from './bookmarks-manager';
+import Settings from './Setting';
+import BookmarksManager from './BookmarksManager';
+import { TagAIModelManager } from './TagAIModel';
+import { StorageManager } from './Storage';
 
 const drawerWidth = 240;
 const itemMap = {
   BOOKMARKS: '书签',
   STORAGE: '存储',
-  SETTING: '设置'
+  TAG_AI_MODEL: 'Tag AI Model',
+  SETTING: '设置',
 };
-const items = [itemMap.BOOKMARKS, itemMap.STORAGE, itemMap.SETTING];
+const items = [itemMap.BOOKMARKS, itemMap.STORAGE, itemMap.TAG_AI_MODEL, itemMap.SETTING];
 
 
 function ManagerAndSetting() {
@@ -60,12 +62,17 @@ function ManagerAndSetting() {
         component="main"
         sx={{ flexGrow: 1, p: 3, width: { sm: `calc(100% - ${drawerWidth}px)` } }}
       >
-        <Toolbar />
         {
           currentItem === itemMap.BOOKMARKS ? <BookmarksManager></BookmarksManager> : null
         }
         {
           currentItem === itemMap.SETTING ? <Settings></Settings> : null
+        }
+        {
+          currentItem === itemMap.TAG_AI_MODEL ? <TagAIModelManager></TagAIModelManager> : null
+        }
+        {
+          currentItem === itemMap.STORAGE ? <StorageManager></StorageManager> : null
         }
       </Box>
     </Box>
