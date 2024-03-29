@@ -26,7 +26,10 @@ export class GithubStorage extends Github {
     }`;
   }
 
-  async addBookmark(bookmark: IBookmark) {
+  async addBookmark(bookmark: IBookmark): Promise<{
+    status: 'success' | 'fail';
+    error: any;
+  }> {
     const filePath = this.#getFilePath();
     const result = await this.getContentByFilePath({
       filePath,
@@ -143,12 +146,14 @@ export class GithubStorage extends Github {
     };
   }
 
-  async modifyTagsByBookmarkId({
+  async modifyBookmarkById({
     id,
     newTags,
+    title,
   }: {
     id: string | number;
-    newTags: ITagItem[];
+    newTags?: ITagItem[];
+    title?: string;
   }): Promise<{
     status: 'success' | 'fail';
     message?: string;
@@ -171,7 +176,12 @@ export class GithubStorage extends Github {
       };
     }
 
-    bookmarks[bookmarkIndex].tags = newTags;
+    if (title && bookmarks[bookmarkIndex].title !== title) {
+      bookmarks[bookmarkIndex].title = title;
+    }
+    if (newTags) {
+      bookmarks[bookmarkIndex].tags = newTags;
+    }
     const result = await this.syncBookmarks(bookmarks);
 
     if (result.message === 'success') {
