@@ -10,11 +10,25 @@ export const StorageKeyHash = {
     SETTING_AUTO_BOOKMARK: 'SETTING_AUTO_BOOKMARK'
 };
 
+export const EnableFeature = 'EnableFeature';
 export const GithubStorageKey = {
     TOKEN: "TOKEN",
     REPO: "REPO",
     OWNER: "OWNER",
-    EMAIL: "EMAIL",   
+    EMAIL: "EMAIL",
+};
+
+export const DefaultStorageKey = {
+    TOKEN: "TOKEN",
+};
+
+export const GeminiKey = {
+    API_KEY: "Gemini_API_KEY",
+    MODEL: "Gemini_MODEL"
+};
+
+export const GeneralSetting = {
+    GenTagCount: 'GeneralSetting_GenTagCount'
 };
 
 export const getStorage = () => {
