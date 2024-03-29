@@ -1,16 +1,16 @@
 import type { PlasmoMessaging } from "@plasmohq/messaging"
 import type { IBookmark, ITagItem } from "api-types";
 import { GithubStorage } from 'github-store';
-import { findBookmarkByUrl } from "~chrome-utils";
 import { StorageKeyHash, getStorage } from '~storage';
 
-export interface RequestBody {
-  url: string;
-  tags?: ITagItem[];
-  title?: string;
+export interface BookmarkUpdateRequestBody {
+  // url: string;
+  // tags?: ITagItem[];
+  // title?: string;
+  updatedBookmark: IBookmark;
 }
 
-export interface ResponseBody {
+export interface BookmarkUpdateResponseBody {
   status: 'success' | 'fail';
   message?: string;
 }
@@ -35,13 +35,13 @@ const updateBookmark = async ({ id, newTags, title }: {id: string; newTags?: ITa
   return result;
 }
  
-const handler: PlasmoMessaging.MessageHandler<RequestBody, ResponseBody> = async (req, res) => {
-  const { url, tags: newTags, title } = req.body;
-  const browserBookmark = await findBookmarkByUrl(url);
+const handler: PlasmoMessaging.MessageHandler<BookmarkUpdateRequestBody, BookmarkUpdateResponseBody> = async (req, res) => {
+  const { updatedBookmark } = req.body;
+  console.info('updatedBookmark', updatedBookmark);
   const result = await updateBookmark({
-    id: browserBookmark.id,
-    newTags,
-    title
+    id: String(updatedBookmark.id),
+    newTags: updatedBookmark.tags,
+    title: updatedBookmark.title,
   });
  
   res.send(result);
