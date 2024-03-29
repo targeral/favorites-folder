@@ -387,7 +387,6 @@ const Bookmark = () => {
         anchorOrigin={{ vertical: "top", horizontal: "center" }}
         open={appearSnackbar}
         autoHideDuration={2000}
-        message="Success"
         onClose={handleSnackBarClose}>
         <Alert severity="success" sx={{ width: "50%" }}>
           {snackBarContent}
