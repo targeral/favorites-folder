@@ -1,19 +1,22 @@
 import BookmarkIcon from "@mui/icons-material/Bookmark"
 import {
   Alert,
+  Autocomplete,
   Avatar,
   Box,
   Chip,
+  CircularProgress,
   List,
   ListItem,
   ListItemIcon,
   ListItemText,
   Snackbar,
-  TextField
+  TextField,
+  type AutocompleteInputChangeReason
 } from "@mui/material"
 import type { IBookmark, ITagItem } from "api-types"
 import { GithubStorage } from "github-store"
-import React, { useCallback, useEffect, useRef, useState } from "react"
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 
 import { sendToBackground } from "@plasmohq/messaging"
 import { useStorage } from "@plasmohq/storage/hook"
@@ -26,16 +29,16 @@ import { getStorage, StorageKeyHash } from "~storage/index"
 
 import { BookmarkEditor, type OnTagsUpdate } from "./BookmarkEditor"
 
-// import moment from 'moment';
-
 const instance = getStorage()
 
 const BookmarkManager = () => {
-  const [searchTerm, setSearchTerm] = useState<string>("")
-  const [tagsFilter, setTagsFilter] = useState<ITagItem[]>([])
+  const [searchText, setSearchText] = useState<string>("")
+  const [searchTags, setSearchTags] = useState<ITagItem[]>([])
+  const [avaliableTags, setAvailableTags] = useState<ITagItem[]>([])
   const [bookmarks, setBookmarks] = useState<IBookmark[]>([])
   const [alertOpen, setAlertOpen] = useState<boolean>(false)
   const [alertContent, setAlertContent] = useState<string>("")
+  const [loading, setLoading] = useState(true)
 
   const [token, setToken] = useStorage<string>(
     {
@@ -86,13 +89,48 @@ const BookmarkManager = () => {
           branch: "main"
         })
         const { bookmarks } = await gs.getBookmarks()
-        console.info("bookmarkTreeNodes", bookmarks)
         setBookmarks(bookmarks)
+        setLoading(false)
+
+        const availableTags = new Map<string, ITagItem>()
+        for (const bookmark of bookmarks) {
+          for (const tag of bookmark.tags) {
+            availableTags.set(tag.name, tag)
+          }
+        }
+        setAvailableTags(Array.from(availableTags.values()))
       }
     }
     main()
     // flattenBookmarks(mockBookmarksData);
   }, [token, repo, owner, email])
+
+  const handleSearchKeyDown = (event) => {
+    if (event.key === "Enter" && searchText.startsWith("tag:")) {
+      const tagName = searchText.split(":")[1].trim()
+      if (
+        tagName &&
+        !searchTags.find((searchTag) => searchTag.name === tagName)
+      ) {
+        setSearchTags([...searchTags, { name: tagName, source: "SYSTEM" }])
+      }
+      setSearchText("")
+    }
+
+    if (
+      event.key === "Backspace" &&
+      searchText === "" &&
+      searchTags.length > 0
+    ) {
+      // 当搜索框为空并且按下退格键时，移除最后一个标签
+      const newTags = searchTags.slice(0, -1)
+      setSearchTags(newTags)
+    }
+  }
+
+  const handleRemoveSearchTag = (tagToRemove: ITagItem) => {
+    setSearchTags(searchTags.filter((tag) => tag.name !== tagToRemove.name))
+  }
 
   //   const flattenBookmarks = (bookmarksData, parentTitle = '') => {
   //     let flatBookmarks = [];
@@ -107,37 +145,46 @@ const BookmarkManager = () => {
   //     setBookmarks(flatBookmarks);
   //   };
 
-  const handleSearchChange = (event) => {
-    const value = event.target.value
-    setSearchTerm(value)
+  const handleSearchChange = (
+    _,
+    newValue: string,
+    reason: AutocompleteInputChangeReason
+  ) => {
+    if (reason === "input" || reason === "clear") {
+      setSearchText(newValue)
+    }
+  }
 
-    if (value.startsWith("tag:")) {
-      const tag = value.split(":")[1]
-      if (tag && !tagsFilter.includes(tag)) {
-        setTagsFilter([...tagsFilter, tag])
+  const handleSearchTagSelect = (event, newValue: string) => {
+    if (newValue && newValue.startsWith("tag:")) {
+      const tagName = newValue.split(":")[1]
+      if (
+        tagName &&
+        !searchTags.find((searchTag) => searchTag.name === tagName)
+      ) {
+        setSearchTags([...searchTags, { name: tagName, source: "SYSTEM" }])
+        event.preventDefault()
+        setSearchText("")
       }
     }
   }
 
-  const handleSearchKeyPress = (event) => {
-    if (event.key === "Enter") {
-      setSearchTerm("")
-    }
-  }
-
   const filteredBookmarks = bookmarks.filter((bookmark) => {
-    if (
-      tagsFilter.length > 0 &&
-      !tagsFilter.every((tag) => bookmark.tags.includes(tag))
-    ) {
-      return false
-    }
-    return bookmark.title.toLowerCase().includes(searchTerm.toLowerCase())
+    // 检查书签标题是否包含搜索文本
+    const matchesSearchText =
+      searchText === "" ||
+      bookmark.title.toLowerCase().includes(searchText.toLowerCase())
+    // 检查书签的标签是否包含所有搜索标签
+    const matchesTags =
+      searchTags.length === 0 ||
+      searchTags.every((searchTag) =>
+        bookmark.tags.find((tag) => tag.name === searchTag.name)
+      )
+    return matchesSearchText && matchesTags
   })
 
   const handleUpdateBookmark = useCallback<OnTagsUpdate>(
     async (updatedBookmark) => {
-      console.info("update", updatedBookmark)
       const result = await sendToBackground<
         BookmarkUpdateRequestBody,
         BookmarkUpdateResponseBody
@@ -149,33 +196,75 @@ const BookmarkManager = () => {
       })
       if (result.status === "success") {
         setAlertContent("更新成功")
+        const index = bookmarks.findIndex(
+          (bookmark) => bookmark.id === updatedBookmark.id
+        )
+        if (index !== -1) {
+          const updatedBookmarks = [...bookmarks]
+          updatedBookmarks[index] = updatedBookmark
+          setBookmarks(updatedBookmarks)
+        }
       } else {
         setAlertContent("更新失败")
       }
       setAlertOpen(true)
     },
-    []
+    [bookmarks]
   )
 
   const handleAlertClose = () => {
     setAlertOpen(false)
   }
 
+  if (loading) {
+    return (
+      <Box
+        display="flex"
+        justifyContent="center"
+        alignItems="center"
+        height="100vh">
+        <CircularProgress />
+      </Box>
+    )
+  }
+
   return (
     <div>
-      <TextField
-        label="Search Bookmarks"
-        variant="outlined"
-        fullWidth
-        value={searchTerm}
-        onChange={handleSearchChange}
-        onKeyPress={handleSearchKeyPress}
+      <Autocomplete
+        freeSolo
+        options={avaliableTags.map((tag) => `tag:${tag.name}`)}
+        inputValue={searchText}
+        onInputChange={handleSearchChange}
+        onChange={handleSearchTagSelect}
+        onKeyDown={handleSearchKeyDown}
+        filterOptions={(options, { inputValue }) => {
+          if (inputValue.startsWith("tag:")) {
+            return options
+          }
+
+          return []
+        }}
+        renderInput={(params) => (
+          <TextField
+            {...params}
+            label="Search Bookmarks"
+            variant="outlined"
+            fullWidth
+            margin="normal"
+            InputProps={{
+              ...params.InputProps,
+              startAdornment: searchTags.map((tag) => (
+                <Chip
+                  key={tag.name}
+                  label={tag.name}
+                  onDelete={() => handleRemoveSearchTag(tag)}
+                  style={{ margin: "2px" }}
+                />
+              ))
+            }}
+          />
+        )}
       />
-      <div>
-        {tagsFilter.map((tag) => (
-          <Chip key={tag.name} label={tag.name} />
-        ))}
-      </div>
       <List>
         {filteredBookmarks.map((bookmark, index) => (
           <ListItem key={index}>
@@ -209,9 +298,7 @@ const BookmarkManager = () => {
         open={alertOpen}
         autoHideDuration={2000}
         onClose={handleAlertClose}>
-        <Alert onClose={handleAlertClose}>
-          {alertContent}
-        </Alert>
+        <Alert onClose={handleAlertClose}>{alertContent}</Alert>
       </Snackbar>
     </div>
   )

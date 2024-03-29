@@ -9,17 +9,17 @@ import ListItemButton from '@mui/material/ListItemButton';
 import ListItemText from '@mui/material/ListItemText';
 import Typography from '@mui/material/Typography';
 
-import Settings from './Setting';
+import Settings from './General';
 import BookmarksManager from './BookmarksManager';
-import { TagAIModelManager } from './TagAIModel';
+import { TagAIModelManager } from './Tag';
 import { StorageManager } from './Storage';
 
 const drawerWidth = 240;
 const itemMap = {
   BOOKMARKS: '书签',
-  STORAGE: '存储',
-  TAG_AI_MODEL: 'Tag AI Model',
-  SETTING: '设置',
+  STORAGE: '存储设置',
+  TAG_AI_MODEL: '标签生成模型',
+  SETTING: '通用设置',
 };
 const items = [itemMap.BOOKMARKS, itemMap.STORAGE, itemMap.TAG_AI_MODEL, itemMap.SETTING];
 
@@ -50,7 +50,7 @@ function ManagerAndSetting() {
           <List>
             {items.map((text, index) => (
               <ListItem key={text} disablePadding>
-                <ListItemButton onClick={() => handleItemClick(text)}>
+                <ListItemButton selected={text === currentItem} onClick={() => handleItemClick(text)}>
                   <ListItemText primary={text} />
                 </ListItemButton>
               </ListItem>
