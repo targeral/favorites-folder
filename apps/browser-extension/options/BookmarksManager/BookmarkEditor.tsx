@@ -1,6 +1,7 @@
 import AddIcon from "@mui/icons-material/Add"
 import CloseIcon from "@mui/icons-material/Close"
 import EditIcon from "@mui/icons-material/Edit"
+import LoadingButton from "@mui/lab/LoadingButton"
 import {
   Box,
   Button,
@@ -37,7 +38,8 @@ const BookmarkEditor: React.FC<BookmarkProps> = ({
   const [editTitle, setEditTitle] = useState(bookmark.title)
   const [editTags, setEditTags] = useState<ITagItem[]>([])
   const [editingTagIndex, setEditingTagIndex] = useState<number | null>(null)
-  const [editingOriginalValue, setEditingOriginalValue] = useState<string>('');
+  const [editingOriginalValue, setEditingOriginalValue] = useState<string>("")
+  const [saveBtnLoading, setSaveBtnLoading] = useState<boolean>(false)
   // const [newTagName, setNewTagName] = useState('');
 
   useEffect(() => {
@@ -57,8 +59,8 @@ const BookmarkEditor: React.FC<BookmarkProps> = ({
   }
 
   const handleTagDoubleClick = (index: number) => {
-    setEditingTagIndex(index);
-    setEditingOriginalValue(editTags[index].name);
+    setEditingTagIndex(index)
+    setEditingOriginalValue(editTags[index].name)
   }
 
   // const handleTagChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -87,52 +89,42 @@ const BookmarkEditor: React.FC<BookmarkProps> = ({
   // }
 
   const handleTagBlur = (index: number) => {
-    if (editTags[index].name.trim() === '') {
+    if (editTags[index].name.trim() === "") {
       // If the edited tag is empty and it's not a new tag, revert changes
       if (editingOriginalValue.length > 0) {
-        const updatedTags = [...editTags];
-        updatedTags[index].name = editingOriginalValue;
-        setEditTags(updatedTags);
+        const updatedTags = [...editTags]
+        updatedTags[index].name = editingOriginalValue
+        setEditTags(updatedTags)
       } else {
         // If it's a new tag, remove it
-        const updatedTags = editTags.filter((_, i) => i !== index);
-        setEditTags(updatedTags);
+        const updatedTags = editTags.filter((_, i) => i !== index)
+        setEditTags(updatedTags)
       }
     }
     // Reset editing index
-    setEditingOriginalValue('');
-    setEditingTagIndex(null);
-  };
+    setEditingOriginalValue("")
+    setEditingTagIndex(null)
+  }
 
-  const handleTagEnter = (e: React.KeyboardEvent<HTMLInputElement>, index: number) => {
+  const handleTagEnter = (
+    e: React.KeyboardEvent<HTMLInputElement>,
+    index: number
+  ) => {
     if (e.key === "Enter") {
-      handleTagBlur(index);
+      handleTagBlur(index)
     }
   }
 
-  // const handleAddTag = () => {
-  //   // setEditTags([...editTags, { name: "", source: "USER" }])
-  //   // setEditingTagIndex(editTags.length)
-  //   // Check if the last tag is empty before adding a new one
-  //   if (
-  //     editTags.length === 0 ||
-  //     editTags[editTags.length - 1].name.trim() !== ""
-  //   ) {
-  //     setEditTags([...editTags, { name: "", source: "USER" }])
-  //     setEditingTagIndex(editTags.length) // This will be the index of the new tag
-  //   } else {
-  //     // If the last tag is empty, we set the editing index to that tag instead of adding a new one
-  //     setEditingTagIndex(editTags.length - 1)
-  //   }
-  // }
-
   const handleAddTag = () => {
     // Check if the last tag is empty before adding a new one
-    if (editTags.length === 0 || editTags[editTags.length - 1].name.trim() !== '') {
-      setEditTags([...editTags, { name: '', source: 'USER' }]);
-      setEditingTagIndex(editTags.length); // This will be the index of the new tag
+    if (
+      editTags.length === 0 ||
+      editTags[editTags.length - 1].name.trim() !== ""
+    ) {
+      setEditTags([...editTags, { name: "", source: "USER" }])
+      setEditingTagIndex(editTags.length) // This will be the index of the new tag
     }
-  };
+  }
 
   const handleInitializeTags = useCallback(async () => {
     // Initialize tags logic here
@@ -143,6 +135,7 @@ const BookmarkEditor: React.FC<BookmarkProps> = ({
   }, [bookmark.url])
 
   const handleSave = async () => {
+    setSaveBtnLoading(true)
     if (onTagsUpdated) {
       await onTagsUpdated({
         ...bookmark,
@@ -150,7 +143,7 @@ const BookmarkEditor: React.FC<BookmarkProps> = ({
         tags: editTags
       })
     }
-
+    setSaveBtnLoading(false)
     handleClose()
   }
 
@@ -228,10 +221,24 @@ const BookmarkEditor: React.FC<BookmarkProps> = ({
           </Grid>
         </DialogContent>
         <DialogActions>
-          {needInit && (
-            <Button onClick={handleInitializeTags}>初始化标签</Button>
-          )}
-          <Button onClick={handleSave}>保存</Button>
+          <Stack direction="row" gap="10px">
+            {/* <LoadingButton
+              onClick={handleDelete}
+              color="error"
+              variant="outlined">
+              <span>删除</span>
+            </LoadingButton> */}
+            {needInit && (
+              <Button onClick={handleInitializeTags}>初始化标签</Button>
+            )}
+            <LoadingButton
+              onClick={handleSave}
+              loading={saveBtnLoading}
+              variant="contained"
+              >
+              <span>保存</span>
+            </LoadingButton>
+          </Stack>
         </DialogActions>
       </Dialog>
     </>

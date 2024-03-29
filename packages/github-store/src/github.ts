@@ -400,7 +400,6 @@ export class Github {
       const contentString = Buffer.from(contentBase64, 'base64').toString(
         'utf-8',
       );
-      console.info('getContentByFilePath', contentString);
       debug(contentString);
       return { content: contentString, error: null };
     }
