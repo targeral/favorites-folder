@@ -1,8 +1,8 @@
-export const EnableFeatureValue = {
+export const StorageServerValue = {
     GITHUB: 'github',
     DEFAULT_SERVER: 'default_server',
 };
 
-export const EnableAIValue = {
-    Gemini: 'gemini'
-};
+export const TagAIServerValue = {
+    GEMINI: 'tag_ai_server_gemini',
+}

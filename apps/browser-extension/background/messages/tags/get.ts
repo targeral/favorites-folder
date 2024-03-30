@@ -5,6 +5,7 @@ import { MugunStore } from "mugun-store"
 import type { PlasmoMessaging } from "@plasmohq/messaging"
 import type { Storage } from "@plasmohq/storage"
 
+import { findBookmarkByUrl } from "~chrome-utils"
 import { StorageServerValue } from "~constants"
 import {
   DefaultStorageKey,
@@ -13,19 +14,22 @@ import {
   StorageServer
 } from "~storage"
 
-export interface BookmarkUpdateRequestBody {
-  updatedBookmark: IBookmark
+export interface TagsGetRequestBody {
+  url: string
 }
 
-export interface BookmarkUpdateResponseBody {
+export interface TagsGetResponseBody {
   status: "success" | "fail"
   message?: string
+  data: {
+    tags: ITagItem[]
+  }
 }
 
-const updateBookmarkFromGithub = async (
+const getTagsByGithub = async (
   { instance }: { instance: Storage },
-  { id, newTags, title }: { id: string; newTags?: ITagItem[]; title?: string }
-) => {
+  { id }: { id: string }
+): Promise<TagsGetResponseBody> => {
   const email = await instance.get(GithubStorageKey.EMAIL)
   const token = await instance.get(GithubStorageKey.TOKEN)
   const owner = await instance.get(GithubStorageKey.OWNER)
@@ -40,48 +44,67 @@ const updateBookmarkFromGithub = async (
     filename: "data.json",
     branch: "main"
   })
-  const result = await gs.modifyBookmarkById({ id, newTags, title })
-  return result
+  const { status, message, tags } = await gs.getTagsByBookmarkId({ id })
+  return {
+    status,
+    message,
+    data: {
+      tags
+    }
+  }
 }
 
-const updateBookmarkFromDefaultServer = async (
+const getTagsByDefaultServer = async (
   {
     instance
   }: {
     instance: Storage
   },
-  updatedBookmark: IBookmark
-) => {
+  { id }: { id: string }
+): Promise<TagsGetResponseBody> => {
   const token = await instance.get(DefaultStorageKey.TOKEN)
   const ms = new MugunStore({ token })
-  const result = await ms.updateBookmark(updatedBookmark)
-  return result
+  const {
+    status,
+    data: { bookmarks }
+  } = await ms.getBookmarks()
+  const foundBookmark = bookmarks.find((bookmark) => String(bookmark.id) === String(id))
+  if (status === "success" && foundBookmark) {
+    return {
+      status,
+      data: {
+        tags: foundBookmark.tags
+      }
+    }
+  }
+
+  return {
+    status: "fail",
+    message: "Fail to get tags",
+    data: {
+      tags: []
+    }
+  }
 }
 
 const handler: PlasmoMessaging.MessageHandler<
-  BookmarkUpdateRequestBody,
-  BookmarkUpdateResponseBody
+  TagsGetRequestBody,
+  TagsGetResponseBody
 > = async (req, res) => {
-  const { updatedBookmark } = req.body
-  console.info("updatedBookmark", updatedBookmark)
+  const { url } = req.body
   const instance = getStorage()
   const storageServer = await instance.get(StorageServer)
+  const browserBookmark = await findBookmarkByUrl(url)
 
-  let result: BookmarkUpdateResponseBody = {
+  let result: TagsGetResponseBody = {
     status: 'fail',
-    message: 'Storage service not set'
+    message: 'Storage service not set',
+    data: { tags: [] }
   };
   if (storageServer === StorageServerValue.GITHUB) {
-    result = await updateBookmarkFromGithub(
-      { instance },
-      {
-        id: String(updatedBookmark.id),
-        newTags: updatedBookmark.tags,
-        title: updatedBookmark.title
-      }
-    )
+    result = await getTagsByGithub({ instance }, { id: browserBookmark.id })
   } else if (storageServer === StorageServerValue.DEFAULT_SERVER) {
-    result = await updateBookmarkFromDefaultServer({instance}, updatedBookmark);
+    result = await getTagsByDefaultServer({ instance }, { id: browserBookmark.id })
   }
 
   res.send(result)

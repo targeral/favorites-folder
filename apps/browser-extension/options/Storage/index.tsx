@@ -3,8 +3,8 @@ import React from "react"
 
 import { useStorage } from "@plasmohq/storage/hook"
 
-import { EnableFeatureValue } from "~constants"
-import { EnableFeature, getStorage } from "~storage/index"
+import { StorageServerValue } from "~constants"
+import { StorageServer, getStorage } from "~storage/index"
 
 import { DefaultStorageSetting } from "./Default"
 import { GithubStorageSetting } from "./Github"
@@ -12,9 +12,9 @@ import { GithubStorageSetting } from "./Github"
 const instance = getStorage()
 
 export const StorageManager = () => {
-  const [enableFeature, setEnableFeature] = useStorage<string>(
+  const [storageServer, setStorageServer] = useStorage<string>(
     {
-      key: EnableFeature,
+      key: StorageServer,
       instance
     },
     ""
@@ -22,9 +22,9 @@ export const StorageManager = () => {
 
   const handleEnableChange = (enable: boolean, trigger: string) => {
     if (enable) {
-      setEnableFeature(trigger)
+      setStorageServer(trigger)
     } else {
-      setEnableFeature("")
+      setStorageServer("")
     }
   }
 
@@ -39,14 +39,14 @@ export const StorageManager = () => {
           alignItems: "center"
         }}>
         <GithubStorageSetting
-          enable={enableFeature === EnableFeatureValue.GITHUB}
+          enable={storageServer === StorageServerValue.GITHUB}
           onEnableChange={(enable) =>
-            handleEnableChange(enable, EnableFeatureValue.GITHUB)
+            handleEnableChange(enable, StorageServerValue.GITHUB)
           }></GithubStorageSetting>
         <DefaultStorageSetting
-          enable={enableFeature === EnableFeatureValue.DEFAULT_SERVER}
+          enable={storageServer === StorageServerValue.DEFAULT_SERVER}
           onEnableChange={(enable) =>
-            handleEnableChange(enable, EnableFeatureValue.DEFAULT_SERVER)
+            handleEnableChange(enable, StorageServerValue.DEFAULT_SERVER)
           }></DefaultStorageSetting>
       </Box>
     </>
