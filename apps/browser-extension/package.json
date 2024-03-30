@@ -19,6 +19,7 @@
     "@plasmohq/storage": "1.9.3",
     "chalk": "^4",
     "github-store": "workspace:*",
+    "mugun-store": "workspace:*",
     "moment": "^2.30.1",
     "plasmo": "0.84.2",
     "react": "18.2.0",

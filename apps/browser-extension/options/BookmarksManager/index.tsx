@@ -6,6 +6,7 @@ import {
   Box,
   Chip,
   CircularProgress,
+  Link,
   List,
   ListItem,
   ListItemIcon,
@@ -21,6 +22,10 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { sendToBackground } from "@plasmohq/messaging"
 import { useStorage } from "@plasmohq/storage/hook"
 
+import type {
+  GetBookmarksRequestBody,
+  GetBookmarksResponseBody
+} from "~background/messages/bookmark/get"
 import type {
   BookmarkUpdateRequestBody,
   BookmarkUpdateResponseBody
@@ -38,57 +43,21 @@ const BookmarkManager = () => {
   const [bookmarks, setBookmarks] = useState<IBookmark[]>([])
   const [alertOpen, setAlertOpen] = useState<boolean>(false)
   const [alertContent, setAlertContent] = useState<string>("")
+  const [alertType, setAlertType] = useState<"success" | "error">("success")
   const [loading, setLoading] = useState(true)
-
-  const [token, setToken] = useStorage<string>(
-    {
-      key: StorageKeyHash.TOKEN,
-      instance
-    },
-    ""
-  )
-  const [repo, setRepo] = useStorage<string>(
-    {
-      key: StorageKeyHash.REPO,
-      instance
-    },
-    ""
-  )
-  const [owner, setOwner] = useStorage<string>(
-    {
-      key: StorageKeyHash.OWNER,
-      instance
-    },
-    ""
-  )
-  const [email, setEmail] = useStorage<string>(
-    {
-      key: StorageKeyHash.EMAIL,
-      instance
-    },
-    ""
-  )
-  const [geminiApiKey, setGeminiApiKey] = useStorage<string>({
-    key: StorageKeyHash.GEMINI_API_KEY,
-    instance
-  })
 
   useEffect(() => {
     // 由于安全限制，此处模拟从 background script 获取书签数据
     // 实际应使用 chrome.bookmarks.getTree
     const main = async () => {
-      // const { bookmarks } = await sendToBackground({ name: 'get-bookmarks' });
-      if (token && repo && owner && email) {
-        const gs = new GithubStorage({
-          token,
-          repo,
-          owner,
-          email,
-          storageFolder: "favorites",
-          filename: "data.json",
-          branch: "main"
-        })
-        const { bookmarks } = await gs.getBookmarks()
+      const {
+        status,
+        data: { bookmarks }
+      } = await sendToBackground<
+        GetBookmarksRequestBody,
+        GetBookmarksResponseBody
+      >({ name: "bookmark/get" })
+      if (status === "success") {
         setBookmarks(bookmarks)
         setLoading(false)
 
@@ -102,8 +71,10 @@ const BookmarkManager = () => {
       }
     }
     main()
+
+    // TODO:  初始化数据
     // flattenBookmarks(mockBookmarksData);
-  }, [token, repo, owner, email])
+  }, [])
 
   const handleSearchKeyDown = (event) => {
     if (event.key === "Enter" && searchText.startsWith("tag:")) {
@@ -195,6 +166,7 @@ const BookmarkManager = () => {
         }
       })
       if (result.status === "success") {
+        setAlertType("success");
         setAlertContent("更新成功")
         const index = bookmarks.findIndex(
           (bookmark) => bookmark.id === updatedBookmark.id
@@ -205,6 +177,7 @@ const BookmarkManager = () => {
           setBookmarks(updatedBookmarks)
         }
       } else {
+        setAlertType("error");
         setAlertContent("更新失败")
       }
       setAlertOpen(true)
@@ -274,7 +247,15 @@ const BookmarkManager = () => {
               </Avatar>
             </ListItemIcon>
             <ListItemText
-              primary={bookmark.title}
+              primary={
+                <Link
+                  underline="hover"
+                  target="_blank"
+                  rel="noreferrer"
+                  href={bookmark.url}>
+                  {bookmark.title}
+                </Link>
+              }
               secondary={
                 <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                   {bookmark.tags.slice(0, 5).map((tag) => (
@@ -298,7 +279,9 @@ const BookmarkManager = () => {
         open={alertOpen}
         autoHideDuration={2000}
         onClose={handleAlertClose}>
-        <Alert onClose={handleAlertClose}>{alertContent}</Alert>
+        <Alert severity={alertType} onClose={handleAlertClose}>
+          {alertContent}
+        </Alert>
       </Snackbar>
     </div>
   )

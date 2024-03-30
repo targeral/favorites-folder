@@ -1,5 +1,4 @@
 import { Box, Card, CardContent, TextField, Typography } from "@mui/material"
-import React, { useState } from "react"
 import { useStorage } from "@plasmohq/storage/hook"
 import { GeneralSetting, getStorage } from "~storage/index"
 
