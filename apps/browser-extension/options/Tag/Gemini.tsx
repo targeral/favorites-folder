@@ -28,7 +28,7 @@ export const GeminiSetting = ({ enable = false, onEnableChange }: GeminiSettingP
       key: GeminiKey.MODEL,
       instance
     },
-    "gemini-pro"
+    (v) => v === undefined ? "gemini-pro" : v
   )
 
   useEffect(() => {

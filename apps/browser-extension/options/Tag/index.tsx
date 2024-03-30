@@ -6,17 +6,17 @@ import React from "react"
 
 import { useStorage } from "@plasmohq/storage/hook"
 
-import { EnableAIValue } from "~constants"
-import { EnableFeature, getStorage } from "~storage/index"
+import { TagAIServerValue } from "~constants"
+import { TagAIServer, getStorage } from "~storage/index"
 
 import { GeminiSetting } from "./Gemini"
 
 const instance = getStorage()
 
 export const TagAIModelManager = () => {
-  const [enableFeature, setEnableFeature] = useStorage<string>(
+  const [tagAIServer, setTagAIServer] = useStorage<string>(
     {
-      key: EnableFeature,
+      key: TagAIServer,
       instance
     },
     ""
@@ -24,9 +24,9 @@ export const TagAIModelManager = () => {
 
   const handleEnableChange = (enable: boolean, trigger: string) => {
     if (enable) {
-      setEnableFeature(trigger)
+      setTagAIServer(trigger)
     } else {
-      setEnableFeature("")
+      setTagAIServer("")
     }
   }
 
@@ -41,9 +41,9 @@ export const TagAIModelManager = () => {
           alignItems: "center"
         }}>
         <GeminiSetting
-          enable={enableFeature === EnableAIValue.Gemini}
+          enable={tagAIServer === TagAIServerValue.GEMINI}
           onEnableChange={(enable) =>
-            handleEnableChange(enable, EnableAIValue.Gemini)
+            handleEnableChange(enable, TagAIServerValue.GEMINI)
           }/>
       </Box>
     </>

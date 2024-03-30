@@ -3,14 +3,14 @@ import {
   type GenerativeModel,
 } from '@google/generative-ai';
 import endent from 'endent';
-import { AIAnalysis, type IAIAnalysisOptions } from './base';
+import { AIAnalyser, type IAIAnalysisOptions } from './base';
 
 export interface GenimiAnalysisOptions extends IAIAnalysisOptions {
   apiKey: string;
   model: string;
 }
 
-export class GenimiAnalysis extends AIAnalysis {
+export class GenimiAnalyser extends AIAnalyser {
   genimiOptions: GenimiAnalysisOptions;
 
   #genAI: GoogleGenerativeAI;
@@ -39,11 +39,19 @@ export class GenimiAnalysis extends AIAnalysis {
     ${content}
 
     `;
-
-    const result = await this.#model.generateContent(prompt);
-    const { response } = result;
-    const text = response.text();
-    console.log(text);
-    return text;
+    try {
+      const result = await this.#model.generateContent(prompt);
+      const { response } = result;
+      const text = response.text();
+      console.log(text);
+      return {
+        data: text,
+      };
+    } catch (e) {
+      return {
+        data: '',
+        error: JSON.stringify(e),
+      };
+    }
   }
 }

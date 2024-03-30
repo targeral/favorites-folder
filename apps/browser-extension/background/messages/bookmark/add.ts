@@ -1,13 +1,26 @@
 import type { PlasmoMessaging } from "@plasmohq/messaging"
+import type { Storage } from "@plasmohq/storage";
 import type { IBookmark, ITagItem } from "api-types";
 import { GithubStorage } from 'github-store';
+import { MugunStore } from 'mugun-store';
+
 import { findBookmarkByUrl } from "~chrome-utils";
 import * as bookmark from '~chrome-utils/bookmark';
 import * as tab from '~chrome-utils/tab';
-import { GithubStorageKey, getStorage } from '~storage';
 
-const addBookmarkByGithubStorage = async (bookmark: IBookmark) => {
-  const instance = getStorage();
+import { StorageServerValue } from "~constants"
+import { getStorage, GithubStorageKey, StorageServer, DefaultStorageKey } from "~storage"
+
+export interface BookmarkAddRequestBody {
+  tags: ITagItem[];
+}
+
+export interface BookmarkAddResponseBody {
+  status: 'success' | 'fail';
+  message?: string;
+}
+
+const addBookmarkByGithubStorage = async ({ instance }: { instance: Storage }, bookmark: IBookmark): Promise<BookmarkAddResponseBody> => {
   const email = await instance.get(GithubStorageKey.EMAIL);
   const token = await instance.get(GithubStorageKey.TOKEN);
   const owner = await instance.get(GithubStorageKey.OWNER);
@@ -26,22 +39,17 @@ const addBookmarkByGithubStorage = async (bookmark: IBookmark) => {
   return result;
 }
 
-const addBookmark = async (bookmark: IBookmark) => {
-  // TODO: 根据设置判断使用哪个 Storage
-  return await addBookmarkByGithubStorage(bookmark);
-}
-
-export interface RequestBody {
-  tags: ITagItem[];
-}
-
-export interface ResponseBody {
-  status: 'success' | 'fail';
-  message?: string;
+const addBookmarkByDefaultServer = async ({ instance }: { instance: Storage }, bookmark: IBookmark): Promise<BookmarkAddResponseBody> => {
+  const token = await instance.get(DefaultStorageKey.TOKEN)
+  const ms = new MugunStore({ token });
+  const result = await ms.addBookmark([bookmark]);
+  return result;
 }
  
-const handler: PlasmoMessaging.MessageHandler<RequestBody, ResponseBody> = async (req, res) => {
+const handler: PlasmoMessaging.MessageHandler<BookmarkAddRequestBody, BookmarkAddResponseBody> = async (req, res) => {
   const { tags } = req.body;
+  const instance = getStorage()
+  const storageServer = await instance.get(StorageServer)
   const currentTab = await tab.getCurrentActiveTab();
   // 在浏览器中添加书签
   await bookmark.createBookmark(currentTab);
@@ -50,13 +58,26 @@ const handler: PlasmoMessaging.MessageHandler<RequestBody, ResponseBody> = async
 
   // 同步后端数据
   const bookmarkData = await findBookmarkByUrl(currentTab.url);
-  const result = await addBookmark({
+  let result: BookmarkAddResponseBody = {
+    status: 'fail',
+    message: 'Storage service not set'
+  };
+  const newBookmark: IBookmark = {
     id: bookmarkData.id,
     title: bookmarkData.title,
     tags,
     url: bookmarkData.url,
     dateAdded: bookmarkData.dateAdded
-  });
+  };
+  if (storageServer === StorageServerValue.GITHUB) {
+    result = await addBookmarkByGithubStorage({ instance }, newBookmark);
+  } else if (storageServer === StorageServerValue.DEFAULT_SERVER) {
+    result = await addBookmarkByDefaultServer({ instance }, newBookmark);
+  }
+
+  if (result.status === 'fail') {
+    result.message = 'Fail to add a new bookmark';
+  }
  
   res.send(result);
 }
