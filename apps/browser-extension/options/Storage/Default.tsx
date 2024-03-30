@@ -45,7 +45,7 @@ export const DefaultStorageSetting = ({ enable, onEnableChange }: DefaultServerS
   }
   return (
     <Accordion sx={{ width: "100%" }}>
-      <AccordionSummary aria-controls="github-content" id="github-header">
+      <AccordionSummary aria-controls="default-server-content" id="default-server-header">
         <Box
           sx={{
             width: "100%",
@@ -67,7 +67,7 @@ export const DefaultStorageSetting = ({ enable, onEnableChange }: DefaultServerS
           }}>
           <TextField
             type={showToken ? "text" : "password"}
-            label="Github Token:"
+            label="Token:"
             value={token}
             onChange={handleTokenChange}
           />

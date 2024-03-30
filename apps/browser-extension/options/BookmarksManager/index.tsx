@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom';
 import BookmarkIcon from "@mui/icons-material/Bookmark"
 import {
   Alert,
@@ -30,13 +31,19 @@ import type {
   BookmarkUpdateRequestBody,
   BookmarkUpdateResponseBody
 } from "~background/messages/bookmark/update"
-import { getStorage, StorageKeyHash } from "~storage/index"
+import { getStorage, StorageServer, TagAIServer } from "~storage/index"
 
 import { BookmarkEditor, type OnTagsUpdate } from "./BookmarkEditor"
+import {
+  InitDialog,
+  type InitType,
+  type OnGoToSettingPage
+} from "../components/InitDialog"
 
 const instance = getStorage()
 
 const BookmarkManager = () => {
+  const navigate = useNavigate();
   const [searchText, setSearchText] = useState<string>("")
   const [searchTags, setSearchTags] = useState<ITagItem[]>([])
   const [avaliableTags, setAvailableTags] = useState<ITagItem[]>([])
@@ -45,11 +52,28 @@ const BookmarkManager = () => {
   const [alertContent, setAlertContent] = useState<string>("")
   const [alertType, setAlertType] = useState<"success" | "error">("success")
   const [loading, setLoading] = useState(true)
+  const [openInitDialog, setOpenInitDialog] = useState<boolean>(false)
+  const [initType, setInitType] = useState<InitType>("none")
 
   useEffect(() => {
+    const checkServerExist = async () => {
+      const storageServer = await instance.get(StorageServer)
+      if (!storageServer) {
+        setInitType("storage-server")
+        setOpenInitDialog(true)
+        return false;
+      }
+
+      return true;
+    };
     // 由于安全限制，此处模拟从 background script 获取书签数据
     // 实际应使用 chrome.bookmarks.getTree
     const main = async () => {
+      const init = await checkServerExist();
+      if (!init) {
+        setLoading(false);
+        return;
+      }
       const {
         status,
         data: { bookmarks }
@@ -189,6 +213,13 @@ const BookmarkManager = () => {
     setAlertOpen(false)
   }
 
+  const handleGoToSetPage: OnGoToSettingPage = (type) => {
+    if (type === "storage-server") {
+      navigate('/storage');
+    }
+    setOpenInitDialog(false);
+  }
+
   if (loading) {
     return (
       <Box
@@ -283,6 +314,10 @@ const BookmarkManager = () => {
           {alertContent}
         </Alert>
       </Snackbar>
+      <InitDialog
+        open={openInitDialog}
+        type={initType}
+        onGoToSettingPage={handleGoToSetPage}></InitDialog>
     </div>
   )
 }
