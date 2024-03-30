@@ -32,7 +32,7 @@ import type {
   BookmarkUpdateByUrlRequestBody,
   BookmarkUpdateByUrlResponseBody
 } from "~background/types"
-import { getStorage, StorageKeyHash } from "~storage/index"
+import { getStorage, StorageServer, StorageKeyHash, TagAIServer } from "~storage/index"
 import { log } from "~utils/log"
 
 import {
@@ -81,6 +81,16 @@ const Bookmark = () => {
   )
 
   useEffect(() => {
+    const checkIfInit = async () => {
+      const instance = getStorage()
+      const storageServer = await instance.get(StorageServer)
+      const aiServer = await instance.get(TagAIServer)
+      if (!storageServer || !aiServer) {
+        chrome.runtime.openOptionsPage();
+        return false;
+      }
+      return true
+    };
     const analyzeTags = async ({ url }) => {
       const result = await sendToBackground<
         TagsGenerateRequestBody,
@@ -118,6 +128,10 @@ const Bookmark = () => {
       return data.tags
     }
     const main = async () => {
+      const init = await checkIfInit();
+      if (!init) {
+        return;
+      }
       const currentTab = await getCurrentActiveTab()
       const isNewTab = checkIsNewTab(currentTab)
       const { url, title } = currentTab
