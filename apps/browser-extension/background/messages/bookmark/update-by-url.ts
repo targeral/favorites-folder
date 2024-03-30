@@ -12,12 +12,15 @@ import {
   GithubStorageKey,
   StorageServer
 } from "~storage"
+import { findBookmarkByUrl } from "~chrome-utils"
 
-export interface BookmarkUpdateRequestBody {
-  updatedBookmark: IBookmark
+export interface BookmarkUpdateByUrlRequestBody {
+  url: string;
+  tags?: ITagItem[];
+  title?: string;
 }
 
-export interface BookmarkUpdateResponseBody {
+export interface BookmarkUpdateByUrlResponseBody {
   status: "success" | "fail"
   message?: string
 }
@@ -25,7 +28,7 @@ export interface BookmarkUpdateResponseBody {
 const updateBookmarkFromGithub = async (
   { instance }: { instance: Storage },
   { id, newTags, title }: { id: string; newTags?: ITagItem[]; title?: string }
-) => {
+): Promise<BookmarkUpdateByUrlResponseBody> => {
   const email = await instance.get(GithubStorageKey.EMAIL)
   const token = await instance.get(GithubStorageKey.TOKEN)
   const owner = await instance.get(GithubStorageKey.OWNER)
@@ -51,7 +54,7 @@ const updateBookmarkFromDefaultServer = async (
     instance: Storage
   },
   updatedBookmark: IBookmark
-) => {
+): Promise<BookmarkUpdateByUrlResponseBody> => {
   const token = await instance.get(DefaultStorageKey.TOKEN)
   const ms = new MugunStore({ token })
   const result = await ms.updateBookmark(updatedBookmark)
@@ -59,15 +62,23 @@ const updateBookmarkFromDefaultServer = async (
 }
 
 const handler: PlasmoMessaging.MessageHandler<
-  BookmarkUpdateRequestBody,
-  BookmarkUpdateResponseBody
+  BookmarkUpdateByUrlRequestBody,
+  BookmarkUpdateByUrlResponseBody
 > = async (req, res) => {
-  const { updatedBookmark } = req.body
-  console.info("updatedBookmark", updatedBookmark)
+  const { url, tags, title } = req.body
+  const { id, dateAdded } = await findBookmarkByUrl(url);
+  const updatedBookmark: IBookmark = {
+    tags,
+    title,
+    url,
+    id,
+    dateAdded,
+  }
+
   const instance = getStorage()
   const storageServer = await instance.get(StorageServer)
 
-  let result: BookmarkUpdateResponseBody = {
+  let result: BookmarkUpdateByUrlResponseBody = {
     status: 'fail',
     message: 'Storage service not set'
   };

@@ -1,20 +1,37 @@
-import { Box, Switch, TextField, Typography } from "@mui/material"
+import HelpOutlineIcon from "@mui/icons-material/HelpOutline"
+import {
+  Box,
+  Card,
+  Link,
+  Switch,
+  TextField,
+  Tooltip,
+  Typography
+} from "@mui/material"
+import IconButton from "@mui/material/IconButton"
 import React, { useEffect, useState } from "react"
 
 import { useStorage } from "@plasmohq/storage/hook"
 
 import { getStorage, GithubStorageKey } from "~storage/index"
 
-import { Accordion, AccordionDetails, AccordionSummary } from "../components/Accordion"
+import {
+  Accordion,
+  AccordionDetails,
+  AccordionSummary
+} from "../components/Accordion"
 
 const instance = getStorage()
 
 export interface GithubStorageSettingProps {
-  enable?: boolean;
-  onEnableChange?: (enable: boolean) => void;
+  enable?: boolean
+  onEnableChange?: (enable: boolean) => void
 }
 
-export const GithubStorageSetting = ({ enable = false, onEnableChange }: GithubStorageSettingProps) => {
+export const GithubStorageSetting = ({
+  enable = false,
+  onEnableChange
+}: GithubStorageSettingProps) => {
   const [showToken, setShowToken] = useState<boolean>(false)
   const [token, setToken] = useStorage<string>(
     {
@@ -97,17 +114,33 @@ export const GithubStorageSetting = ({ enable = false, onEnableChange }: GithubS
             justifyContent: "center",
             gap: 1
           }}>
-          <TextField
-            type={showToken ? "text" : "password"}
-            label="Github Token:"
-            value={token}
-            onChange={handleTokenChange}
-          />
-          <TextField
-            label="Github Repo:"
-            value={repo}
-            onChange={handleRepoChange}
-          />
+          <Box sx={{ display: "flex", alignItems: "center" }}>
+            <TextField
+              label="Github Repo:"
+              value={repo}
+              onChange={handleRepoChange}
+              sx={{ flex: "1 1 auto" }}
+            />
+            <Tooltip
+              title={
+                <>
+                  <Typography variant="body1">
+                    A Github repository for storing data.{" "}
+                    <Link
+                      href="https://github.com/new"
+                      target="_blank"
+                      color="#ffc107"
+                      rel="noreferrer">
+                      To Create
+                    </Link>
+                  </Typography>
+                </>
+              }>
+              <IconButton>
+                <HelpOutlineIcon />
+              </IconButton>
+            </Tooltip>
+          </Box>
           <TextField
             label="Github owner:"
             value={owner}
@@ -118,6 +151,40 @@ export const GithubStorageSetting = ({ enable = false, onEnableChange }: GithubS
             value={email}
             onChange={handleEmailChange}
           />
+          <Box sx={{ display: "flex", alignItems: "center" }}>
+            <TextField
+              sx={{ flex: "1 1 auto" }}
+              type={showToken ? "text" : "password"}
+              label="Github Token:"
+              value={token}
+              onChange={handleTokenChange}
+            />
+            <Tooltip
+              title={
+                <div>
+                  <Typography variant="h6">How to get Github Token</Typography>
+                  <Typography variant="body1">
+                    1. Click on this <Link
+                      href="https://github.com/settings/personal-access-tokens/new"
+                      target="_blank"
+                      color="#ffc107"
+                      rel="noreferrer">
+                      link
+                    </Link> to create
+                  </Typography>
+                  <Typography variant="body1">
+                    2. Find on the page: 
+                    <Typography sx={{marginLeft: '20px'}} variant="body2">{`=>\n`} "Repository access"</Typography>
+                    <Typography sx={{marginLeft: '20px'}} variant="body2">{`=>\n`} "Only select repositories"</Typography>
+                    <Typography sx={{marginLeft: '20px'}} variant="body2"> {`=>\n`}"Select Your Repo"</Typography>
+                  </Typography>
+                </div>
+              }>
+              <IconButton>
+                <HelpOutlineIcon />
+              </IconButton>
+            </Tooltip>
+          </Box>
         </Box>
       </AccordionDetails>
     </Accordion>

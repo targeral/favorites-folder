@@ -2,14 +2,14 @@ export interface IAIAnalysisOptions {
   name?: string;
 }
 
-export class AIAnalysis {
+export class AIAnalyser {
   options: IAIAnalysisOptions;
 
   constructor(options: IAIAnalysisOptions) {
     this.options = options;
   }
 
-  async analysis(content: string): Promise<string> {
-    return content;
+  async analysis(content: string): Promise<{ data: string; error?: string }> {
+    return { data: content };
   }
 }

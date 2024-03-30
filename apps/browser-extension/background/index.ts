@@ -75,3 +75,8 @@ chrome.bookmarks.onRemoved.addListener(function(id, removeInfo) {
 
 //   // TODO: Sends message about whether the current page is bookmarked to the popup
 // });
+
+(async () => {
+  const bookmarkTreeNodes = await chrome.bookmarks.getTree();
+console.info('bookmarkTreeNodes', bookmarkTreeNodes);
+})();

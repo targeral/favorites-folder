@@ -20,6 +20,18 @@ import React, { useEffect, useState } from "react"
 import { sendToBackground } from "@plasmohq/messaging"
 import { useStorage } from "@plasmohq/storage/hook"
 
+import type {
+  BookmarkAddRequestBody,
+  BookmarkAddResponseBody,
+  BookmarkRemoveRequestBody,
+  BookmarkRemoveResponseBody,
+  TagsGenerateRequestBody,
+  TagsGenerateResponseBody,
+  TagsGetRequestBody,
+  TagsGetResponseBody,
+  BookmarkUpdateByUrlRequestBody,
+  BookmarkUpdateByUrlResponseBody
+} from "~background/types"
 import { getStorage, StorageKeyHash } from "~storage/index"
 import { log } from "~utils/log"
 
@@ -54,8 +66,11 @@ const Bookmark = () => {
     useState<boolean>(true)
   const [newTab, setNewTab] = useState<boolean>(true)
   const [saveBtnLoading, setSaveBtnLoading] = useState<boolean>(false)
-  const [appearSnackbar, setAppearSnackbar] = useState<boolean>(false)
-  const [snackBarContent, setSnackBarContent] = useState<string>("")
+  const [deleteBtnLoading, setDeleteBtnLoading] = useState<boolean>(false);
+  const [appearAlert, setAppearAlert] = useState<boolean>(false)
+  const [alertContent, setAlertContent] = useState<string>("")
+  const [alertType, setAlertType] = useState<"success" | "error">("success")
+  const [autoCloseWindow, setAutoCloseWindow] = useState<boolean>(false);
 
   const [autoBookmark] = useStorage<boolean>(
     {
@@ -67,27 +82,40 @@ const Bookmark = () => {
 
   useEffect(() => {
     const analyzeTags = async ({ url }) => {
-      const apiKey = await instance.get(StorageKeyHash.GEMINI_API_KEY)
-      log("apiKey", apiKey)
-      const { tags } = await sendToBackground({
+      const result = await sendToBackground<
+        TagsGenerateRequestBody,
+        TagsGenerateResponseBody
+      >({
         name: "tags/generate",
         body: {
-          url,
-          apiKey
+          url
         }
       })
-      log("tags", tags)
-      return tags
+      if (result.status === "success") {
+        return result.data.tags
+      } else {
+        setAlertContent(`标签生成失败: ${result.message}`)
+        setAlertType("error")
+        setAppearAlert(true)
+        return []
+      }
     }
     const getTagsByUrl = async ({ url }) => {
-      const { tags } = await sendToBackground<
-        { url: string },
-        { tags: ITagItem[] }
+      const { status, data, message } = await sendToBackground<
+        TagsGetRequestBody,
+        TagsGetResponseBody
       >({
-        name: "tags/get-from-storage",
+        name: "tags/get",
         body: { url }
       })
-      return tags
+      if (status === "fail") {
+        setAlertContent(message)
+        setAlertType("error")
+        setAppearAlert(true)
+        return []
+      }
+
+      return data.tags
     }
     const main = async () => {
       const currentTab = await getCurrentActiveTab()
@@ -163,47 +191,73 @@ const Bookmark = () => {
   const handleComplete = async () => {
     setSaveBtnLoading(true)
     if (bookmarkAction === BookmarkAction.CREATE) {
-      const result = await sendToBackground({
+      const result = await sendToBackground<
+        BookmarkAddRequestBody,
+        BookmarkAddResponseBody
+      >({
         name: "bookmark/add",
         body: {
           tags
         }
       })
       if (result.status === "success") {
-        setSnackBarContent("保存成功！")
+        setAlertContent("保存成功！");
+        setAutoCloseWindow(true);
       } else {
-        setSnackBarContent("保存失败，请重试！");
+        setAutoCloseWindow(false);
+        setAlertContent("保存失败，请重试！")
       }
     } else if (bookmarkAction === BookmarkAction.MODIFY) {
       const result = await sendToBackground<
-        { url: string; tags?: ITagItem[]; title?: string; },
-        { status: "success" | "fail"; message?: string }
+      BookmarkUpdateByUrlRequestBody,
+      BookmarkUpdateByUrlResponseBody
       >({
-        name: "bookmark/update",
+        name: "bookmark/update-by-url",
         body: {
           url: websiteUrl,
           tags,
-          title: websiteTitle,
+          title: websiteTitle
         }
       })
       if (result.status === "success") {
-        setSnackBarContent("更新成功！");
+        setAlertContent("更新成功！")
+        setAutoCloseWindow(true);
       } else {
-        setSnackBarContent(`更新失败，请重试！`);
+        setAlertContent(`更新失败，请重试！`)
+        setAutoCloseWindow(false);
       }
     }
+
     setSaveBtnLoading(false)
-    setAppearSnackbar(true)
+    setAppearAlert(true)
   }
 
   const handleRemove = async () => {
-    const result = await sendToBackground({
-      name: 'bookmark/remove'
+    setDeleteBtnLoading(true);
+    const result = await sendToBackground<
+      BookmarkRemoveRequestBody,
+      BookmarkRemoveResponseBody
+    >({
+      name: "bookmark/remove",
+      body: {
+        url: websiteUrl,  
+      }
     })
 
-    if (result.message) {
-      setBookmarkAction(BookmarkAction.CREATE)
+    if (result.status === "success") {
+      setAlertContent("移除成功！")
+      setAlertType("success");
+      setAutoCloseWindow(true);
+      setBookmarkAction(BookmarkAction.CREATE);
+    } else {
+      setAlertContent("移除失败，请重试！")
+      setAlertType("error");
+      setAutoCloseWindow(false);
+      setBookmarkAction(BookmarkAction.MODIFY);
     }
+
+    setDeleteBtnLoading(false);
+    setAppearAlert(true);
   }
 
   const handleManageClick = () => {
@@ -252,8 +306,10 @@ const Bookmark = () => {
     if (reason === "clickaway") {
       return
     }
-    setAppearSnackbar(false)
-    window.close();
+    setAppearAlert(false)
+    if (autoCloseWindow) {
+      window.close();
+    }
   }
 
   return (
@@ -364,12 +420,13 @@ const Bookmark = () => {
             </Button>
             <Box display="flex" alignItems="center" gap={2}>
               {bookmarkAction === BookmarkAction.MODIFY ? (
-                <Button
+                <LoadingButton
+                  loading={deleteBtnLoading}
                   variant="contained"
                   color="warning"
                   onClick={handleRemove}>
-                  移除
-                </Button>
+                  <span>移除</span>
+                </LoadingButton>
               ) : null}
               <LoadingButton
                 loading={saveBtnLoading}
@@ -385,11 +442,11 @@ const Bookmark = () => {
       )}
       <Snackbar
         anchorOrigin={{ vertical: "top", horizontal: "center" }}
-        open={appearSnackbar}
+        open={appearAlert}
         autoHideDuration={2000}
         onClose={handleSnackBarClose}>
-        <Alert severity="success" sx={{ width: "50%" }}>
-          {snackBarContent}
+        <Alert severity={alertType} sx={{ width: "50%" }}>
+          {alertContent}
         </Alert>
       </Snackbar>
     </Card>

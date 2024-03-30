@@ -60,12 +60,41 @@ export class GithubStorage extends Github {
     };
   }
 
-  async removeBookmark() {
-    // Empty
-  }
+  async removeBookmarkById({ id }: { id: string | number }): Promise<{
+    status: 'success' | 'fail';
+    message?: string;
+  }> {
+    const { status, bookmarks } = await this.getBookmarks();
+    if (status === 'fail') {
+      return {
+        status: 'fail',
+        message: 'Get bookmarks fail',
+      };
+    }
 
-  async modifyBookmark() {
-    // Empty
+    const bookmarkIndex = bookmarks.findIndex(bookmark => bookmark.id === id);
+    console.info('bookmarkIndex', bookmarkIndex);
+
+    if (bookmarkIndex === -1) {
+      return {
+        status: 'fail',
+        message: 'Can`t find this bookmark',
+      };
+    }
+
+    const updatedBookmarks = [...bookmarks];
+    updatedBookmarks.splice(bookmarkIndex, 1);
+    const result = await this.syncBookmarks(updatedBookmarks);
+
+    if (result.message === 'success') {
+      return {
+        status: 'success',
+      };
+    }
+
+    return {
+      status: 'fail',
+    };
   }
 
   async getBookmarks(): Promise<{

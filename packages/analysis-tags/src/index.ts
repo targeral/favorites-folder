@@ -1,1 +1,1 @@
-export * from './site-analyer';
+export * from './site-analyser';

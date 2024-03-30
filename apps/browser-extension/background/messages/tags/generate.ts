@@ -1,33 +1,63 @@
-import type { PlasmoMessaging } from "@plasmohq/messaging";
-import type { ITagItem } from 'api-types';
-import { SiteAnalyer } from 'analysis-tags';
+import { SiteAnalyser } from "analysis-tags"
+import type { ITagItem } from "api-types"
 
-export interface RequestBody {
-  url: string;
-  apiKey: string;
+import type { PlasmoMessaging } from "@plasmohq/messaging"
+import type { Storage } from "@plasmohq/storage"
+
+import { TagAIServerValue } from "~constants"
+import { GeminiKey, getStorage, TagAIServer } from "~storage"
+
+export interface TagsGenerateRequestBody {
+  url: string
 }
 
-export interface ResponseBody {
-  tags: ITagItem[];
+export interface TagsGenerateResponseBody {
+  status: "success" | "fail"
+  message?: string
+  data: {
+    tags: ITagItem[]
+  }
 }
 
-const getTags = async ({ websiteUrl, apiKey }: {websiteUrl: string; apiKey: string}): Promise<ITagItem[]> => {
-    const sa = new SiteAnalyer({ url: websiteUrl });
-    const tags = await sa.analyzeByGemini({ apiKey, model: 'gemini-pro' });
+const generateTagsByGemini = async (
+  { instance }: { instance: Storage },
+  { url }: { url: string }
+): Promise<TagsGenerateResponseBody> => {
+  const apiKey = await instance.get(GeminiKey.API_KEY);
+  const model = await instance.get(GeminiKey.MODEL);
+  console.info('model', model, apiKey);
+  const analyser = new SiteAnalyser({ url })
+  const { status, message, data: tags } = await analyser.analyzeByGemini({ apiKey, model })
 
-    return tags.map(tag => ({
-      name: tag,
-      source: 'AI'
-    }));
+  return {
+    status,
+    data: {
+      tags,
+    },
+    message
+  };
 }
- 
-const handler: PlasmoMessaging.MessageHandler<RequestBody, ResponseBody> = async (req, res) => {
-  const { url, apiKey } = req.body;
-  const tags = await getTags({ websiteUrl: url, apiKey });
- 
-  res.send({
-    tags
-  });
+
+const handler: PlasmoMessaging.MessageHandler<
+  TagsGenerateRequestBody,
+  TagsGenerateResponseBody
+> = async (req, res) => {
+  const { url } = req.body
+  const instance = getStorage()
+  const server = await instance.get(TagAIServer)
+  let result: TagsGenerateResponseBody = {
+    status: 'fail',
+    data: {
+      tags: [],
+    },
+    message: 'No matching AI service'
+  };
+  if (server === TagAIServerValue.GEMINI) {
+    result = await generateTagsByGemini({ instance }, { url })
+  }
+
+  
+  res.send(result);
 }
- 
+
 export default handler
