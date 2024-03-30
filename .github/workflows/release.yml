@@ -37,7 +37,9 @@ jobs:
       run: pnpm install
 
     - name: Build project
-      run: cd apps/browser-extension && pnpm build
+      env:
+        BASE_URL: ${{ secrets.BASE_URL }}
+      run: pnpm --filter favorites-folder... build
 
     - name: Archive production artifacts
       run: |
