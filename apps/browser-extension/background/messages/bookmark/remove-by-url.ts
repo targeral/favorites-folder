@@ -1,10 +1,9 @@
 import type { PlasmoMessaging } from "@plasmohq/messaging"
 import type { Storage } from "@plasmohq/storage"
-import type { IBookmark } from "api-types"
 import { GithubStorage } from "github-store"
 import { MugunStore } from "mugun-store"
 
-import * as browserBookmarkAPI from "~chrome-utils/bookmark"
+import * as bookmark from "~chrome-utils/bookmark"
 import { StorageServerValue } from "~constants"
 import {
   DefaultStorageKey,
@@ -14,7 +13,7 @@ import {
 } from "~storage"
 
 export interface BookmarkRemoveRequestBody {
-  bookmark: IBookmark;
+  url: string
 }
 
 export interface BookmarkRemoveResponseBody {
@@ -56,24 +55,25 @@ const handler: PlasmoMessaging.MessageHandler<
   BookmarkRemoveRequestBody,
   BookmarkRemoveResponseBody
 > = async (req, res) => {
-  const { bookmark } = req.body
+  const { url } = req.body
   const instance = getStorage()
   const storageServer = await instance.get(StorageServer)
   let result: BookmarkRemoveResponseBody = {
     status: 'fail',
     message: 'Storage service not set'
   };
+  const browserBookmark = await bookmark.findBookmarkByUrl(url)
   if (storageServer === StorageServerValue.GITHUB) {
-    result = await removeByGithub({ instance }, { id: String(bookmark.id) })
+    result = await removeByGithub({ instance }, { id: browserBookmark.id })
   } else if (storageServer === StorageServerValue.DEFAULT_SERVER) {
     result = await removeByDefaultServer(
       { instance },
-      { id: String(bookmark.id) }
+      { id: browserBookmark.id }
     )
   }
 
-  if (result.status === 'success' && browserBookmarkAPI.findBookmarkByUrl(bookmark.url)) {
-    await browserBookmarkAPI.removeBookmark(bookmark.url);
+  if (result.status === 'success') {
+    await bookmark.removeBookmark(url);
   }
   
   res.send(result);

@@ -28,7 +28,7 @@ export const GeminiKey = {
 };
 
 export const GeneralSetting = {
-    GenTagCount: 'GeneralSetting_GenTagCount'
+    BookmarkTagsCount: 'GeneralSetting_BookmarkTagsCount'
 };
 
 export const getStorage = () => {

@@ -8,7 +8,8 @@ import { TagAIServerValue } from "~constants"
 import { GeminiKey, getStorage, TagAIServer } from "~storage"
 
 export interface TagsGenerateRequestBody {
-  url: string
+  url: string;
+  count?: number;
 }
 
 export interface TagsGenerateResponseBody {
@@ -21,12 +22,12 @@ export interface TagsGenerateResponseBody {
 
 const generateTagsByGemini = async (
   { instance }: { instance: Storage },
-  { url }: { url: string }
+  { url, count }: { url: string; count?: number }
 ): Promise<TagsGenerateResponseBody> => {
   const apiKey = await instance.get(GeminiKey.API_KEY);
   const model = await instance.get(GeminiKey.MODEL);
   console.info('model', model, apiKey);
-  const analyser = new SiteAnalyser({ url })
+  const analyser = new SiteAnalyser({ url, tagMaxCount: count })
   const { status, message, data: tags } = await analyser.analyzeByGemini({ apiKey, model })
 
   return {
@@ -42,7 +43,7 @@ const handler: PlasmoMessaging.MessageHandler<
   TagsGenerateRequestBody,
   TagsGenerateResponseBody
 > = async (req, res) => {
-  const { url } = req.body
+  const { url, count } = req.body
   const instance = getStorage()
   const server = await instance.get(TagAIServer)
   let result: TagsGenerateResponseBody = {
@@ -53,7 +54,7 @@ const handler: PlasmoMessaging.MessageHandler<
     message: 'No matching AI service'
   };
   if (server === TagAIServerValue.GEMINI) {
-    result = await generateTagsByGemini({ instance }, { url })
+    result = await generateTagsByGemini({ instance }, { url, count })
   }
 
   

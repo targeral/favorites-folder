@@ -1,20 +1,23 @@
-import { Box, Card, CardContent, TextField, Typography } from "@mui/material"
+import * as React from 'react';
+import { Box, Card, CardContent, Typography } from "@mui/material"
+
 import { useStorage } from "@plasmohq/storage/hook"
 import { GeneralSetting, getStorage } from "~storage/index"
+import { NumberInput, type OnChange } from '../components/NumberInput';
 
 const instance = getStorage()
 
 const Settings = () => {
-  const [tagCount, setTagCount] = useStorage<number>(
+  const [tagMaxCount, setTagMaxCount] = useStorage<number>(
     {
-      key: GeneralSetting.GenTagCount,
+      key: GeneralSetting.BookmarkTagsCount,
       instance
     },
     5
   )
 
-  const handleTagCountChange = (event) => {
-    setTagCount(event.target.value)
+  const handleTagCountChange: OnChange = (value) => {
+    setTagMaxCount(value)
   }
 
   return (
@@ -25,16 +28,13 @@ const Settings = () => {
           <CardContent>
             <Box sx={{ mt: 2 }}>
               <Typography variant="h6">标签设置</Typography>
-              <TextField
-                label="标签生成数量"
-                type="number"
-                value={tagCount}
+              <NumberInput
+                label="书签的标签/Tag 数量"
+                value={tagMaxCount}
                 onChange={handleTagCountChange}
-                InputLabelProps={{
-                  shrink: true
-                }}
-                margin="normal"
-              />
+                max={5}
+                min={0}
+              ></NumberInput>
             </Box>
             {/* 未来更多设置内容可以在这里添加 */}
           </CardContent>

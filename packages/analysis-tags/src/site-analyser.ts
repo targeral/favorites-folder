@@ -4,6 +4,7 @@ import { extractHtml } from './crawler';
 
 export interface ISiteAnalyserOptions {
   url: string;
+  tagMaxCount?: number;
 }
 
 export class SiteAnalyser {
@@ -11,6 +12,7 @@ export class SiteAnalyser {
 
   constructor(options: ISiteAnalyserOptions) {
     this.options = options;
+    this.options.tagMaxCount = this.options.tagMaxCount ?? 5;
   }
 
   async analyzeByGemini(options: GenimiAnalysisOptions): Promise<{
@@ -20,7 +22,9 @@ export class SiteAnalyser {
   }> {
     const ga = new GenimiAnalyser(options);
     const content = await this.#getWebsiteContent();
-    const { data, error } = await ga.analysis(content);
+    const { data, error } = await ga.analysis(content, {
+      tagsCount: this.options.tagMaxCount,
+    });
     if (error) {
       return {
         status: 'fail',

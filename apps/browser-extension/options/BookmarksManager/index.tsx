@@ -31,6 +31,12 @@ import type {
   BookmarkUpdateRequestBody,
   BookmarkUpdateResponseBody
 } from "~background/messages/bookmark/update"
+import type {
+  BookmarkRemoveRequestBody,
+  BookmarkRemoveResponseBody,
+  TagsGenerateRequestBody,
+  TagsGenerateResponseBody
+} from "~background/types"
 import { getStorage, StorageServer, TagAIServer } from "~storage/index"
 
 import {
@@ -38,12 +44,16 @@ import {
   type InitType,
   type OnGoToSettingPage
 } from "../components/InitDialog"
-import { BookmarkEditorDialog, type OnTagsUpdate } from "./BookmarkEditor"
+import {
+  BookmarkEditorDialog,
+  type OnGenerateNewTags,
+  type OnTagsUpdate
+} from "./BookmarkEditor"
 
 const instance = getStorage()
 
 const BookmarkManager = () => {
-  const navigate = useNavigate();
+  const navigate = useNavigate()
   const [searchText, setSearchText] = useState<string>("")
   const [searchTags, setSearchTags] = useState<ITagItem[]>([])
   const [avaliableTags, setAvailableTags] = useState<ITagItem[]>([])
@@ -55,8 +65,7 @@ const BookmarkManager = () => {
   const [openInitDialog, setOpenInitDialog] = useState<boolean>(false)
   const [initType, setInitType] = useState<InitType>("none")
   const [editorOpen, setEditorOpen] = useState(false)
-  const [editingBookmark, setEditingBookmark] = useState<IBookmark>();
-
+  const [editingBookmark, setEditingBookmark] = useState<IBookmark>()
 
   useEffect(() => {
     const checkServerExist = async () => {
@@ -96,10 +105,10 @@ const BookmarkManager = () => {
         }
         setAvailableTags(Array.from(availableTags.values()))
       } else {
-        setAlertContent(`获取书签数据失败: ${message}`);
-        setAlertType("error");
-        setLoading(false);
-        setAlertOpen(true);
+        setAlertContent(`获取书签数据失败: ${message}`)
+        setAlertType("error")
+        setLoading(false)
+        setAlertOpen(true)
       }
     }
     main()
@@ -187,8 +196,8 @@ const BookmarkManager = () => {
   })
 
   const handleEditClick = (bookmark: IBookmark) => {
-    setEditingBookmark(bookmark);
-    setEditorOpen(true);
+    setEditingBookmark(bookmark)
+    setEditorOpen(true)
   }
 
   const handleEditClose = () => {
@@ -208,8 +217,8 @@ const BookmarkManager = () => {
       })
       if (result.status === "success") {
         setAlertType("success")
-        setAlertContent("更新成功");
-        setEditorOpen(false);
+        setAlertContent("更新成功")
+        setEditorOpen(false)
         const index = bookmarks.findIndex(
           (bookmark) => bookmark.id === updatedBookmark.id
         )
@@ -222,10 +231,62 @@ const BookmarkManager = () => {
         setAlertType("error")
         setAlertContent("更新失败")
       }
-      setAlertOpen(true);
+      setAlertOpen(true)
     },
     [bookmarks]
   )
+
+  const handleRemoveBookmark = async (removingBookmark: IBookmark) => {
+    const result = await sendToBackground<
+      BookmarkRemoveRequestBody,
+      BookmarkRemoveResponseBody
+    >({
+      name: "bookmark/remove",
+      body: {
+        bookmark: removingBookmark
+      }
+    })
+    if (result.status === "success") {
+      const index = bookmarks.findIndex(
+        (bookmark) => bookmark.id === removingBookmark.id
+      )
+      if (index !== -1) {
+        const newBookmarks = [...bookmarks];
+        newBookmarks.splice(index, 1);
+        setBookmarks(newBookmarks);
+      }
+      setAlertContent(`书签移除成功`)
+      setAlertType("success")
+      setAlertOpen(true)
+      setEditorOpen(false)
+    } else {
+      setAlertContent(`书签移除失败，请重试`)
+      setAlertType("error")
+      setAlertOpen(true)
+    }
+  }
+
+  const handleGenerateNewTags: OnGenerateNewTags = async ({ url, count }) => {
+    const result = await sendToBackground<
+      TagsGenerateRequestBody,
+      TagsGenerateResponseBody
+    >({
+      name: "tags/generate",
+      body: {
+        url,
+        count
+      }
+    })
+
+    if (result.status === "success") {
+      return result.data.tags
+    } else {
+      setAlertContent(`生成标签失败: ${result.message}`)
+      setAlertType("error")
+      setAlertOpen(true)
+      return []
+    }
+  }
 
   const handleAlertClose = () => {
     setAlertOpen(false)
@@ -334,6 +395,8 @@ const BookmarkManager = () => {
         onClose={handleEditClose}
         bookmark={editingBookmark}
         onTagsUpdated={handleUpdateBookmark}
+        onRemove={handleRemoveBookmark}
+        onGenerateNewTags={handleGenerateNewTags}
       />
       <InitDialog
         open={openInitDialog}
