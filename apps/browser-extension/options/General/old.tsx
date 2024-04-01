@@ -21,7 +21,7 @@ import { sendToBackground } from "@plasmohq/messaging"
 import { useStorage } from "@plasmohq/storage/hook"
 
 import { getStorage, StorageKeyHash } from "~storage/index"
-import type { IBookmark, ITagItem } from "api-types";
+import type { IBookmark } from "api-types";
 
 const instance = getStorage()
 

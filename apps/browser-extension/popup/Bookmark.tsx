@@ -7,7 +7,6 @@ import {
   Card,
   CardContent,
   Chip,
-  CircularProgress,
   IconButton,
   Skeleton,
   Snackbar,

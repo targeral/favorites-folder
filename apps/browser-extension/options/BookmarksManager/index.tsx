@@ -1,5 +1,5 @@
-import { useNavigate } from 'react-router-dom';
 import BookmarkIcon from "@mui/icons-material/Bookmark"
+import EditIcon from "@mui/icons-material/Edit"
 import {
   Alert,
   Autocomplete,
@@ -7,6 +7,7 @@ import {
   Box,
   Chip,
   CircularProgress,
+  IconButton,
   Link,
   List,
   ListItem,
@@ -17,11 +18,10 @@ import {
   type AutocompleteInputChangeReason
 } from "@mui/material"
 import type { IBookmark, ITagItem } from "api-types"
-import { GithubStorage } from "github-store"
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import React, { useCallback, useEffect, useState } from "react"
+import { useNavigate } from "react-router-dom"
 
 import { sendToBackground } from "@plasmohq/messaging"
-import { useStorage } from "@plasmohq/storage/hook"
 
 import type {
   GetBookmarksRequestBody,
@@ -33,12 +33,12 @@ import type {
 } from "~background/messages/bookmark/update"
 import { getStorage, StorageServer, TagAIServer } from "~storage/index"
 
-import { BookmarkEditor, type OnTagsUpdate } from "./BookmarkEditor"
 import {
   InitDialog,
   type InitType,
   type OnGoToSettingPage
 } from "../components/InitDialog"
+import { BookmarkEditorDialog, type OnTagsUpdate } from "./BookmarkEditor"
 
 const instance = getStorage()
 
@@ -54,6 +54,9 @@ const BookmarkManager = () => {
   const [loading, setLoading] = useState(true)
   const [openInitDialog, setOpenInitDialog] = useState<boolean>(false)
   const [initType, setInitType] = useState<InitType>("none")
+  const [editorOpen, setEditorOpen] = useState(false)
+  const [editingBookmark, setEditingBookmark] = useState<IBookmark>();
+
 
   useEffect(() => {
     const checkServerExist = async () => {
@@ -61,22 +64,22 @@ const BookmarkManager = () => {
       if (!storageServer) {
         setInitType("storage-server")
         setOpenInitDialog(true)
-        return false;
+        return false
       }
 
-      return true;
-    };
-    // 由于安全限制，此处模拟从 background script 获取书签数据
-    // 实际应使用 chrome.bookmarks.getTree
+      return true
+    }
+
     const main = async () => {
-      const init = await checkServerExist();
+      const init = await checkServerExist()
       if (!init) {
-        setLoading(false);
-        return;
+        setLoading(false)
+        return
       }
       const {
         status,
-        data: { bookmarks }
+        data: { bookmarks },
+        message
       } = await sendToBackground<
         GetBookmarksRequestBody,
         GetBookmarksResponseBody
@@ -92,6 +95,11 @@ const BookmarkManager = () => {
           }
         }
         setAvailableTags(Array.from(availableTags.values()))
+      } else {
+        setAlertContent(`获取书签数据失败: ${message}`);
+        setAlertType("error");
+        setLoading(false);
+        setAlertOpen(true);
       }
     }
     main()
@@ -178,6 +186,15 @@ const BookmarkManager = () => {
     return matchesSearchText && matchesTags
   })
 
+  const handleEditClick = (bookmark: IBookmark) => {
+    setEditingBookmark(bookmark);
+    setEditorOpen(true);
+  }
+
+  const handleEditClose = () => {
+    setEditorOpen(false)
+  }
+
   const handleUpdateBookmark = useCallback<OnTagsUpdate>(
     async (updatedBookmark) => {
       const result = await sendToBackground<
@@ -190,8 +207,9 @@ const BookmarkManager = () => {
         }
       })
       if (result.status === "success") {
-        setAlertType("success");
-        setAlertContent("更新成功")
+        setAlertType("success")
+        setAlertContent("更新成功");
+        setEditorOpen(false);
         const index = bookmarks.findIndex(
           (bookmark) => bookmark.id === updatedBookmark.id
         )
@@ -201,10 +219,10 @@ const BookmarkManager = () => {
           setBookmarks(updatedBookmarks)
         }
       } else {
-        setAlertType("error");
+        setAlertType("error")
         setAlertContent("更新失败")
       }
-      setAlertOpen(true)
+      setAlertOpen(true);
     },
     [bookmarks]
   )
@@ -215,9 +233,9 @@ const BookmarkManager = () => {
 
   const handleGoToSetPage: OnGoToSettingPage = (type) => {
     if (type === "storage-server") {
-      navigate('/storage');
+      navigate("/storage")
     }
-    setOpenInitDialog(false);
+    setOpenInitDialog(false)
   }
 
   if (loading) {
@@ -295,10 +313,9 @@ const BookmarkManager = () => {
                   {bookmark.tags.length > 5
                     ? `+${bookmark.tags.length - 5}`
                     : null}
-                  <BookmarkEditor
-                    bookmark={bookmark}
-                    onTagsUpdated={handleUpdateBookmark}
-                  />
+                  <IconButton onClick={() => handleEditClick(bookmark)}>
+                    <EditIcon />
+                  </IconButton>
                 </Box>
               }
             />
@@ -310,10 +327,14 @@ const BookmarkManager = () => {
         open={alertOpen}
         autoHideDuration={2000}
         onClose={handleAlertClose}>
-        <Alert severity={alertType} onClose={handleAlertClose}>
-          {alertContent}
-        </Alert>
+        <Alert severity={alertType}>{alertContent}</Alert>
       </Snackbar>
+      <BookmarkEditorDialog
+        open={editorOpen}
+        onClose={handleEditClose}
+        bookmark={editingBookmark}
+        onTagsUpdated={handleUpdateBookmark}
+      />
       <InitDialog
         open={openInitDialog}
         type={initType}

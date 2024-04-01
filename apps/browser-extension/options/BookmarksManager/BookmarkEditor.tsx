@@ -1,6 +1,5 @@
 import AddIcon from "@mui/icons-material/Add"
 import CloseIcon from "@mui/icons-material/Close"
-import EditIcon from "@mui/icons-material/Edit"
 import LoadingButton from "@mui/lab/LoadingButton"
 import {
   Box,
@@ -22,19 +21,26 @@ import React, { useCallback, useEffect, useState } from "react"
 export type OnTagsUpdate = (bookmark: IBookmark) => Promise<void> | void
 
 export type BookmarkProps = {
-  bookmark: IBookmark
-  needInit?: boolean
-  onTagsUpdated?: OnTagsUpdate
+  bookmark?: IBookmark;
+  needInit?: boolean;
+  onTagsUpdated?: OnTagsUpdate;
+  onClose?: () => void;
   onInitTags?: (url: string) => Promise<ITagItem[]>
 }
-
+const defaultBookmark: IBookmark = {
+  title: '',
+  tags: [],
+  id: '',
+  url: '',
+  dateAdded: 0,
+};
 const BookmarkEditor: React.FC<BookmarkProps> = ({
-  bookmark,
+  bookmark = defaultBookmark,
   needInit = false,
+  onClose,
   onTagsUpdated,
-  onInitTags
+  onInitTags,
 }) => {
-  const [editMode, setEditMode] = useState(false)
   const [editTitle, setEditTitle] = useState(bookmark.title)
   const [editTags, setEditTags] = useState<ITagItem[]>([])
   const [editingTagIndex, setEditingTagIndex] = useState<number | null>(null)
@@ -46,12 +52,9 @@ const BookmarkEditor: React.FC<BookmarkProps> = ({
     setEditTags(bookmark.tags)
   }, [bookmark.tags])
 
-  const handleEditClick = () => {
-    setEditMode(true)
-  }
 
   const handleClose = () => {
-    setEditMode(false)
+    onClose && onClose();
   }
 
   const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -144,7 +147,6 @@ const BookmarkEditor: React.FC<BookmarkProps> = ({
       })
     }
     setSaveBtnLoading(false)
-    handleClose()
   }
 
   const handleTagDelete = (tagToDelete) => () => {
@@ -153,11 +155,6 @@ const BookmarkEditor: React.FC<BookmarkProps> = ({
 
   return (
     <>
-      <IconButton onClick={handleEditClick}>
-        <EditIcon />
-      </IconButton>
-
-      <Dialog open={editMode} onClose={handleClose} maxWidth="sm" fullWidth>
         <DialogTitle>
           <Box
             sx={{
@@ -240,9 +237,34 @@ const BookmarkEditor: React.FC<BookmarkProps> = ({
             </LoadingButton>
           </Stack>
         </DialogActions>
+    </>
+  )
+}
+
+export type BookmarkDialogProps = {
+  open?: boolean;
+  bookmark?: IBookmark;
+  needInit?: boolean;
+  onTagsUpdated?: OnTagsUpdate;
+  onClose?: () => void;
+  onInitTags?: (url: string) => Promise<ITagItem[]>
+}
+
+const BookmarkEditorDialog: React.FC<BookmarkDialogProps> = ({
+  open,
+  ...props
+}) => {
+  const handleClose = () => {
+    props.onClose && props.onClose();
+  }
+
+  return (
+    <>
+      <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
+        <BookmarkEditor {...props}></BookmarkEditor>
       </Dialog>
     </>
   )
 }
 
-export { BookmarkEditor }
+export { BookmarkEditorDialog, BookmarkEditor }
