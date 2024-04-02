@@ -44,7 +44,8 @@ jobs:
     - name: Archive production artifacts
       run: |
         # 将构建产物打包成一个压缩文件
-        zip -r release-${{ github.event.inputs.version }}.zip ./apps/browser-extension/build/chrome-mv3-prod
+        # zip -r release-${{ github.event.inputs.version }}.zip ./apps/browser-extension/build/chrome-mv3-prod
+        cd ./apps/browser-extension/build/chrome-mv3-prod && zip -r ../../../../release-${{ github.event.inputs.version }}.zip ./*
     - name: Create Release
       id: create_release
       uses: actions/create-release@v1
