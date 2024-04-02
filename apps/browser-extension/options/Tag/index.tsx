@@ -1,15 +1,13 @@
-
-
-
 import { Box } from "@mui/material"
 import React from "react"
 
 import { useStorage } from "@plasmohq/storage/hook"
 
 import { TagAIServerValue } from "~constants"
-import { TagAIServer, getStorage } from "~storage/index"
+import { getStorage, TagAIServer } from "~storage/index"
 
 import { GeminiSetting } from "./Gemini"
+import { MoonshotSetting } from "./Moonshot"
 
 const instance = getStorage()
 
@@ -44,7 +42,14 @@ export const TagAIModelManager = () => {
           enable={tagAIServer === TagAIServerValue.GEMINI}
           onEnableChange={(enable) =>
             handleEnableChange(enable, TagAIServerValue.GEMINI)
-          }/>
+          }
+        />
+        <MoonshotSetting
+          enable={tagAIServer === TagAIServerValue.MOONSHOT}
+          onEnableChange={(enable) =>
+            handleEnableChange(enable, TagAIServerValue.MOONSHOT)
+          }
+        />
       </Box>
     </>
   )

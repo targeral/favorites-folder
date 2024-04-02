@@ -5,4 +5,5 @@ export const StorageServerValue = {
 
 export const TagAIServerValue = {
     GEMINI: 'tag_ai_server_gemini',
+    MOONSHOT: 'tag_ai_server_moonshot',
 }

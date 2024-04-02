@@ -101,6 +101,9 @@ importers:
       json5:
         specifier: 2.2.3
         version: 2.2.3
+      ky:
+        specifier: 1.2.3
+        version: 1.2.3
     devDependencies:
       '@modern-js/eslint-config':
         specifier: 2.48.2

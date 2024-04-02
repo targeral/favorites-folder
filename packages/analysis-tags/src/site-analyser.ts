@@ -1,6 +1,7 @@
 import type { ITagItem } from 'api-types';
 import { GenimiAnalyser, type GenimiAnalysisOptions } from './ai/gemini';
 import { extractHtml } from './crawler';
+import { MoonshotAnalyser, MoonshotAnalysisOptions } from './ai/moonshot';
 
 export interface ISiteAnalyserOptions {
   url: string;
@@ -29,6 +30,34 @@ export class SiteAnalyser {
       return {
         status: 'fail',
         data: [],
+      };
+    }
+
+    return {
+      status: 'success',
+      data: data.split(',').map(name => ({
+        name,
+        source: 'AI',
+      })),
+    };
+  }
+
+  async analyzeByMoonshot(options: MoonshotAnalysisOptions): Promise<{
+    status: 'success' | 'fail';
+    data: ITagItem[];
+    message?: string;
+  }> {
+    const moonshot = new MoonshotAnalyser(options);
+    const content = await this.#getWebsiteContent();
+    const { data, error } = await moonshot.analysis(content, {
+      tagsCount: this.options.tagMaxCount,
+    });
+
+    if (error) {
+      return {
+        status: 'fail',
+        data: [],
+        message: error,
       };
     }
 

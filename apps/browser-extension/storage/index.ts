@@ -26,6 +26,10 @@ export const GeminiKey = {
     API_KEY: "Gemini_API_KEY",
     MODEL: "Gemini_MODEL"
 };
+export const MoonshotKey = {
+    API_KEY: "Moonshot_API_KEY",
+    MODEL: "Moonshot_MODEL"
+};
 
 export const GeneralSetting = {
     BookmarkTagsCount: 'GeneralSetting_BookmarkTagsCount'

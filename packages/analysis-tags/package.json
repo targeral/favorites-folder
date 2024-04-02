@@ -34,7 +34,8 @@
     "axios": "1.6.7",
     "debug": "4.3.4",
     "endent": "2.1.0",
-    "json5": "2.2.3"
+    "json5": "2.2.3",
+    "ky": "1.2.3"
   },
   "devDependencies": {
     "@modern-js/eslint-config": "2.48.2",

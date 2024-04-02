@@ -1,11 +1,11 @@
-import { SiteAnalyser } from "analysis-tags"
+import { SiteAnalyser, type MoonshotModel } from "analysis-tags"
 import type { ITagItem } from "api-types"
 
 import type { PlasmoMessaging } from "@plasmohq/messaging"
 import type { Storage } from "@plasmohq/storage"
 
 import { TagAIServerValue } from "~constants"
-import { GeminiKey, getStorage, TagAIServer } from "~storage"
+import { GeminiKey, getStorage, MoonshotKey, TagAIServer } from "~storage"
 
 export interface TagsGenerateRequestBody {
   url: string;
@@ -39,6 +39,26 @@ const generateTagsByGemini = async (
   };
 }
 
+const generateTagsByMoonshot = async (
+  { instance }: { instance: Storage },
+  { url, count }: { url: string; count?: number }
+): Promise<TagsGenerateResponseBody> => {
+  const apiKey = await instance.get(MoonshotKey.API_KEY);
+  // TODO: maybe check model value in site analyser
+  const model = await instance.get(MoonshotKey.MODEL) as MoonshotModel;
+  console.info('model', model, apiKey);
+  const analyser = new SiteAnalyser({ url, tagMaxCount: count })
+  const { status, message, data: tags } = await analyser.analyzeByMoonshot({ apiKey, model })
+
+  return {
+    status,
+    data: {
+      tags,
+    },
+    message
+  };
+}
+
 const handler: PlasmoMessaging.MessageHandler<
   TagsGenerateRequestBody,
   TagsGenerateResponseBody
@@ -55,6 +75,8 @@ const handler: PlasmoMessaging.MessageHandler<
   };
   if (server === TagAIServerValue.GEMINI) {
     result = await generateTagsByGemini({ instance }, { url, count })
+  } else if (server === TagAIServerValue.MOONSHOT) {
+    result = await generateTagsByMoonshot({ instance }, { url, count });
   }
 
   
