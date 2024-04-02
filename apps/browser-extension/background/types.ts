@@ -22,3 +22,7 @@ export type {
   BookmarkUpdateByUrlRequestBody,
   BookmarkUpdateByUrlResponseBody
 } from './messages/bookmark/update-by-url';
+export type {
+  BookmarkBatchRequestBody,
+  BookmarkBatchResponseBody
+} from './messages/bookmark/batch';

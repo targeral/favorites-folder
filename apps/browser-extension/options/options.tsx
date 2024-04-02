@@ -4,7 +4,8 @@ import {
   Route,
   HashRouter as Router,
   Routes,
-  useNavigate
+  useNavigate,
+  Navigate
 } from "react-router-dom"
 
 import { getStorage, StorageServer, TagAIServer } from "~storage"
@@ -66,10 +67,11 @@ function ManagerAndSetting() {
             width: { sm: `calc(100% - ${drawerWidth}px)` }
           }}>
           <Routes>
-            <Route path="bookmarks" element={<BookmarksManager />} />
-            <Route path="common" element={<Settings />} />
-            <Route path="tags" element={<TagAIModelManager />} />
-            <Route path="storage" element={<StorageManager />} />
+              <Route path="/" element={<Navigate replace to="bookmarks" />} />
+              <Route path="bookmarks" element={<BookmarksManager />} />
+              <Route path="common" element={<Settings />} />
+              <Route path="tags" element={<TagAIModelManager />} />
+              <Route path="storage" element={<StorageManager />} />
             {/* 可以根据需要添加更多的路由 */}
           </Routes>
         </Box>

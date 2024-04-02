@@ -35,14 +35,14 @@ const addBookmarkByGithubStorage = async ({ instance }: { instance: Storage }, b
     filename: "data.json",
     branch: "main"
   });
-  const result = await gs.addBookmark(bookmark);
+  const result = await gs.addBookmarks([bookmark]);
   return result;
 }
 
 const addBookmarkByDefaultServer = async ({ instance }: { instance: Storage }, bookmark: IBookmark): Promise<BookmarkAddResponseBody> => {
   const token = await instance.get(DefaultStorageKey.TOKEN)
   const ms = new MugunStore({ token });
-  const result = await ms.addBookmark([bookmark]);
+  const result = await ms.addBookmarks([bookmark]);
   return result;
 }
  

@@ -99,7 +99,7 @@ export class MugunStore {
     };
   }
 
-  async addBookmark(bookmarks: IBookmark[]): Promise<{
+  async addBookmarks(bookmarks: IBookmark[]): Promise<{
     status: 'success' | 'fail';
   }> {
     const url = `${this.#baseUrl}/insert`;

@@ -28,10 +28,18 @@ import type {
   GetBookmarksResponseBody
 } from "~background/messages/bookmark/get"
 import type {
+  GetBookmarksFromBrowserRequest,
+  GetBookmarksFromBrowserResponse
+} from "~background/messages/bookmark/get-from-browser"
+import type {
   BookmarkUpdateRequestBody,
   BookmarkUpdateResponseBody
 } from "~background/messages/bookmark/update"
 import type {
+  BookmarkAddRequestBody,
+  BookmarkAddResponseBody,
+  BookmarkBatchRequestBody,
+  BookmarkBatchResponseBody,
   BookmarkRemoveRequestBody,
   BookmarkRemoveResponseBody,
   TagsGenerateRequestBody,
@@ -79,6 +87,47 @@ const BookmarkManager = () => {
       return true
     }
 
+    const initBookmarksData = async () => {
+      const {
+        bookmarks: bookmarksFromBrowser,
+        status,
+        message
+      } = await sendToBackground<
+        GetBookmarksFromBrowserRequest,
+        GetBookmarksFromBrowserResponse
+      >({
+        name: "bookmark/get-from-browser"
+      })
+
+      console.info("bookmarksFromBrowser", bookmarksFromBrowser)
+
+      if (status === "fail") {
+        setAlertContent(`获取浏览器书签数据失败: ${message}`)
+        setAlertType("error")
+        setAlertOpen(true)
+        return
+      }
+
+      // 同步到后端
+      const batchResult = await sendToBackground<
+        BookmarkBatchRequestBody,
+        BookmarkBatchResponseBody
+      >({
+        name: "bookmark/batch",
+        body: {
+          bookmarks: bookmarksFromBrowser
+        }
+      })
+
+      if (batchResult.status === "fail") {
+        setAlertContent(`同步书签数据失败: ${batchResult.message}`)
+        setAlertType("error")
+        setAlertOpen(true)
+        return
+      }
+      return bookmarksFromBrowser
+    }
+
     const main = async () => {
       const init = await checkServerExist()
       if (!init) {
@@ -94,16 +143,23 @@ const BookmarkManager = () => {
         GetBookmarksResponseBody
       >({ name: "bookmark/get" })
       if (status === "success") {
-        setBookmarks(bookmarks)
-        setLoading(false)
+        if (bookmarks.length > 0) {
+          setBookmarks(bookmarks)
+          setLoading(false)
 
-        const availableTags = new Map<string, ITagItem>()
-        for (const bookmark of bookmarks) {
-          for (const tag of bookmark.tags) {
-            availableTags.set(tag.name, tag)
+          const availableTags = new Map<string, ITagItem>()
+          for (const bookmark of bookmarks) {
+            for (const tag of bookmark.tags) {
+              availableTags.set(tag.name, tag)
+            }
           }
+          setAvailableTags(Array.from(availableTags.values()))
+        } else {
+          // 从浏览器获取书签数据，并同步到后端
+          const initBookmarks = await initBookmarksData()
+          setBookmarks(initBookmarks)
+          setLoading(false)
         }
-        setAvailableTags(Array.from(availableTags.values()))
       } else {
         setAlertContent(`获取书签数据失败: ${message}`)
         setAlertType("error")
@@ -251,9 +307,9 @@ const BookmarkManager = () => {
         (bookmark) => bookmark.id === removingBookmark.id
       )
       if (index !== -1) {
-        const newBookmarks = [...bookmarks];
-        newBookmarks.splice(index, 1);
-        setBookmarks(newBookmarks);
+        const newBookmarks = [...bookmarks]
+        newBookmarks.splice(index, 1)
+        setBookmarks(newBookmarks)
       }
       setAlertContent(`书签移除成功`)
       setAlertType("success")
@@ -367,7 +423,9 @@ const BookmarkManager = () => {
                 </Link>
               }
               secondary={
-                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                <Box
+                  component="span" // https://stackoverflow.com/questions/41928567/div-cannot-appear-as-a-descendant-of-p
+                  sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                   {bookmark.tags.slice(0, 5).map((tag) => (
                     <Chip key={tag.name} label={tag.name} />
                   ))}

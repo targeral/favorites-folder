@@ -26,7 +26,7 @@ export class GithubStorage extends Github {
     }`;
   }
 
-  async addBookmark(bookmark: IBookmark): Promise<{
+  async addBookmarks(additionalBookmarks: IBookmark[]): Promise<{
     status: 'success' | 'fail';
     error: any;
   }> {
@@ -38,7 +38,7 @@ export class GithubStorage extends Github {
 
     if (result.content) {
       const bookmarks = JSON.parse(result.content);
-      bookmarks.push(bookmark);
+      bookmarks.push(...additionalBookmarks);
 
       const jsonString = transformBookmarksToString(bookmarks);
       try {
