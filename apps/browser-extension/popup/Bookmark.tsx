@@ -7,7 +7,9 @@ import {
   Card,
   CardContent,
   Chip,
+  FormHelperText,
   IconButton,
+  Link,
   Skeleton,
   Snackbar,
   TextField,
@@ -22,16 +24,22 @@ import { useStorage } from "@plasmohq/storage/hook"
 import type {
   BookmarkAddRequestBody,
   BookmarkAddResponseBody,
-  BookmarkRemoveRequestBody,
-  BookmarkRemoveResponseBody,
+  BookmarkRemoveByUrlRequestBody,
+  BookmarkRemoveByUrlResponseBody,
+  BookmarkUpdateByUrlRequestBody,
+  BookmarkUpdateByUrlResponseBody,
   TagsGenerateRequestBody,
   TagsGenerateResponseBody,
   TagsGetRequestBody,
-  TagsGetResponseBody,
-  BookmarkUpdateByUrlRequestBody,
-  BookmarkUpdateByUrlResponseBody
+  TagsGetResponseBody
 } from "~background/types"
-import { getStorage, StorageServer, StorageKeyHash, TagAIServer } from "~storage/index"
+import { openOptionsPage } from "~chrome-utils/open"
+import {
+  getStorage,
+  StorageKeyHash,
+  StorageServer,
+  TagAIServer
+} from "~storage/index"
 import { log } from "~utils/log"
 
 import {
@@ -65,11 +73,13 @@ const Bookmark = () => {
     useState<boolean>(true)
   const [newTab, setNewTab] = useState<boolean>(true)
   const [saveBtnLoading, setSaveBtnLoading] = useState<boolean>(false)
-  const [deleteBtnLoading, setDeleteBtnLoading] = useState<boolean>(false);
+  const [deleteBtnLoading, setDeleteBtnLoading] = useState<boolean>(false)
   const [appearAlert, setAppearAlert] = useState<boolean>(false)
   const [alertContent, setAlertContent] = useState<string>("")
   const [alertType, setAlertType] = useState<"success" | "error">("success")
-  const [autoCloseWindow, setAutoCloseWindow] = useState<boolean>(false);
+  const [autoCloseWindow, setAutoCloseWindow] = useState<boolean>(false)
+  const [autoGenerateTags, setAutoGenerateTags] = useState<boolean>(false)
+  const [appearGenTagLink, setAppearGenTagLink] = useState<boolean>(false)
 
   const [autoBookmark] = useStorage<boolean>(
     {
@@ -78,18 +88,23 @@ const Bookmark = () => {
     },
     false
   )
+  // const [] = useStorage<string>({
+  //   key: TagAIServer,
+  //   instance
+  // })
 
   useEffect(() => {
+    const instance = getStorage()
     const checkIfInit = async () => {
-      const instance = getStorage()
       const storageServer = await instance.get(StorageServer)
-      const aiServer = await instance.get(TagAIServer)
-      if (!storageServer || !aiServer) {
-        chrome.runtime.openOptionsPage();
-        return false;
+
+      if (!storageServer) {
+        chrome.runtime.openOptionsPage()
+        return false
       }
+
       return true
-    };
+    }
     const analyzeTags = async ({ url }) => {
       const result = await sendToBackground<
         TagsGenerateRequestBody,
@@ -127,10 +142,18 @@ const Bookmark = () => {
       return data.tags
     }
     const main = async () => {
-      const init = await checkIfInit();
+      const init = await checkIfInit()
       if (!init) {
-        return;
+        return
       }
+
+      const aiServer = await instance.get(TagAIServer)
+      if (aiServer) {
+        setAutoGenerateTags(true)
+      } else {
+        setAppearGenTagLink(true)
+      }
+
       const currentTab = await getCurrentActiveTab()
       const isNewTab = checkIsNewTab(currentTab)
       const { url, title } = currentTab
@@ -152,7 +175,7 @@ const Bookmark = () => {
       setActionText(isBookmarked ? "修改" : "创建")
 
       if (!isBookmarked) {
-        const tags = await analyzeTags({ url })
+        const tags = aiServer ? await analyzeTags({ url }) : []
         setTags(tags)
       } else {
         const tags = await getTagsByUrl({ url })
@@ -214,16 +237,16 @@ const Bookmark = () => {
         }
       })
       if (result.status === "success") {
-        setAlertContent("保存成功！");
-        setAutoCloseWindow(true);
+        setAlertContent("保存成功！")
+        setAutoCloseWindow(true)
       } else {
-        setAutoCloseWindow(false);
+        setAutoCloseWindow(false)
         setAlertContent("保存失败，请重试！")
       }
     } else if (bookmarkAction === BookmarkAction.MODIFY) {
       const result = await sendToBackground<
-      BookmarkUpdateByUrlRequestBody,
-      BookmarkUpdateByUrlResponseBody
+        BookmarkUpdateByUrlRequestBody,
+        BookmarkUpdateByUrlResponseBody
       >({
         name: "bookmark/update-by-url",
         body: {
@@ -234,10 +257,10 @@ const Bookmark = () => {
       })
       if (result.status === "success") {
         setAlertContent("更新成功！")
-        setAutoCloseWindow(true);
+        setAutoCloseWindow(true)
       } else {
         setAlertContent(`更新失败，请重试！`)
-        setAutoCloseWindow(false);
+        setAutoCloseWindow(false)
       }
     }
 
@@ -246,31 +269,31 @@ const Bookmark = () => {
   }
 
   const handleRemove = async () => {
-    setDeleteBtnLoading(true);
+    setDeleteBtnLoading(true)
     const result = await sendToBackground<
-      BookmarkRemoveRequestBody,
-      BookmarkRemoveResponseBody
+      BookmarkRemoveByUrlRequestBody,
+      BookmarkRemoveByUrlResponseBody
     >({
-      name: "bookmark/remove",
+      name: "bookmark/remove-by-url",
       body: {
-        url: websiteUrl,  
+        url: websiteUrl
       }
     })
 
     if (result.status === "success") {
       setAlertContent("移除成功！")
-      setAlertType("success");
-      setAutoCloseWindow(true);
-      setBookmarkAction(BookmarkAction.CREATE);
+      setAlertType("success")
+      setAutoCloseWindow(true)
+      setBookmarkAction(BookmarkAction.CREATE)
     } else {
       setAlertContent("移除失败，请重试！")
-      setAlertType("error");
-      setAutoCloseWindow(false);
-      setBookmarkAction(BookmarkAction.MODIFY);
+      setAlertType("error")
+      setAutoCloseWindow(false)
+      setBookmarkAction(BookmarkAction.MODIFY)
     }
 
-    setDeleteBtnLoading(false);
-    setAppearAlert(true);
+    setDeleteBtnLoading(false)
+    setAppearAlert(true)
   }
 
   const handleManageClick = () => {
@@ -321,9 +344,19 @@ const Bookmark = () => {
     }
     setAppearAlert(false)
     if (autoCloseWindow) {
-      window.close();
+      window.close()
     }
   }
+
+  const goToTagSettingPage = () => {
+    openOptionsPage("#tags")
+  }
+
+  const Instrument = () => (
+    <>
+      或尝试开启<Link sx={{ cursor: 'pointer' }} onClick={goToTagSettingPage}>推荐标签功能</Link>
+    </>
+  )
 
   return (
     <Card sx={{ width: 448, minHeight: 233 }}>
@@ -367,7 +400,7 @@ const Bookmark = () => {
               </Typography>
             </Box>
             <Typography variant="body1" sx={{ mt: 2 }}>
-              当前书签的推荐分类为：
+              {autoGenerateTags ? "当前书签的推荐分类为：" : "添加书签分类："}
             </Typography>
             <Box
               sx={{
@@ -407,18 +440,16 @@ const Bookmark = () => {
                         />
                       )}
                     </div>
-                    // <Chip
-                    //   key={index}
-                    //   label={tag}
-                    //   onDelete={handleTagDelete(tag)}
-                    //   deleteIcon={<CloseIcon />}
-                    //   sx={{ mr: 1, mt: 1 }}
-                    // />
                   ))
                 )}
                 <IconButton onClick={handleAddTagClick} size="small">
                   <AddIcon />
                 </IconButton>
+                {tags.length === 0 ? (
+                  <FormHelperText>
+                    点击 "+" 新增标签。{appearGenTagLink ? <Instrument /> : null}
+                  </FormHelperText>
+                ) : null}
               </>
             </Box>
           </CardContent>

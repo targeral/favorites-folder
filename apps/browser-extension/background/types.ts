@@ -15,6 +15,10 @@ export type {
   BookmarkRemoveResponseBody
 } from './messages/bookmark/remove';
 export type {
+  BookmarkRemoveByUrlRequestBody,
+  BookmarkRemoveByUrlResponseBody
+} from './messages/bookmark/remove-by-url';
+export type {
   BookmarkUpdateRequestBody,
   BookmarkUpdateResponseBody
 } from './messages/bookmark/update';

@@ -30,16 +30,8 @@ function ManagerAndSetting() {
     const main = async () => {
       const instance = getStorage()
       const storageServer = await instance.get(StorageServer)
-      const aiServer = await instance.get(TagAIServer)
-      console.info(aiServer, storageServer)
-      if (!storageServer && !aiServer) {
-        setInitType("all")
-        setOpenInitDialog(true)
-      } else if (!storageServer && aiServer) {
+      if (!storageServer) {
         setInitType("storage-server")
-        setOpenInitDialog(true)
-      } else if (!aiServer && storageServer) {
-        setInitType("ai-server")
         setOpenInitDialog(true)
       }
     }
