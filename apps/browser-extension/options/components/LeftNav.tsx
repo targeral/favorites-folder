@@ -16,7 +16,8 @@ const itemMap = {
   BOOKMARKS: "书签",
   STORAGE: "存储设置",
   TAG_AI_MODEL: "标签生成模型",
-  SETTING: "通用设置"
+  SETTING: "通用设置",
+  FEEDBACK: '问题反馈'
 }
 
 const navItems = [
@@ -24,6 +25,7 @@ const navItems = [
   { text: itemMap.STORAGE, path: '/storage' },
   { text: itemMap.TAG_AI_MODEL, path: '/tags' },
   { text: itemMap.SETTING, path: '/common' },
+  { text: itemMap.FEEDBACK, path: '/feedback'}
 ];
 export const drawerWidth = 240
 export const LeftNav = () => {

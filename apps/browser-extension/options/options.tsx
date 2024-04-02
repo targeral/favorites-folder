@@ -20,6 +20,7 @@ import { LeftNav, drawerWidth } from "./components/LeftNav"
 import Settings from "./General"
 import { StorageManager } from "./Storage"
 import { TagAIModelManager } from "./Tag"
+import { Feedback } from './Feedback';
 
 function ManagerAndSetting() {
   const [openInitDialog, setOpenInitDialog] = useState<boolean>(false)
@@ -64,6 +65,7 @@ function ManagerAndSetting() {
               <Route path="common" element={<Settings />} />
               <Route path="tags" element={<TagAIModelManager />} />
               <Route path="storage" element={<StorageManager />} />
+              <Route path="feedback" element={<Feedback />} />
             {/* 可以根据需要添加更多的路由 */}
           </Routes>
         </Box>
