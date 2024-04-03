@@ -1,20 +1,28 @@
 import type { IBookmark } from "api-types"
 import { GithubStorage } from "github-store"
-import { MugunStore } from 'mugun-store';
+import { MugunStore } from "mugun-store"
 
 import type { PlasmoMessaging } from "@plasmohq/messaging"
 import type { Storage } from "@plasmohq/storage"
 
 import { StorageServerValue } from "~constants"
-import { getStorage, GithubStorageKey, StorageServer, DefaultStorageKey } from "~storage"
+import {
+  DefaultStorageKey,
+  getStorage,
+  GithubStorageKey,
+  StorageServer
+} from "~storage"
 
-const getBookmarksFromGithub = async ({ instance }: { instance: Storage }): Promise<GetBookmarksResponseBody> => {
+const getBookmarksFromGithub = async ({
+  instance
+}: {
+  instance: Storage
+}): Promise<GetBookmarksResponseBody> => {
   const email = await instance.get(GithubStorageKey.EMAIL)
   const token = await instance.get(GithubStorageKey.TOKEN)
   const owner = await instance.get(GithubStorageKey.OWNER)
   const repo = await instance.get(GithubStorageKey.REPO)
-  const initialized = await instance.get<boolean>(GithubStorageKey.INIT);
-  console.info('initialized', initialized);
+  const initialized = await instance.get<boolean>(GithubStorageKey.INIT)
 
   const gs = new GithubStorage({
     token,
@@ -25,11 +33,18 @@ const getBookmarksFromGithub = async ({ instance }: { instance: Storage }): Prom
     filename: "data.json",
     branch: "main"
   })
-  let result;
+  let result: {
+    status: "success" | "fail"
+    message?: string
+    bookmarks: IBookmark[]
+  }
   if (initialized) {
     result = await gs.getBookmarks()
   } else {
-    result = await gs.initStorage();
+    result = await gs.initStorage()
+    if (result.status === "success") {
+      await instance.set(GithubStorageKey.INIT, true);
+    }
   }
   return {
     ...result,
@@ -45,9 +60,9 @@ const getBookmarksFromDefaultServer = async ({
   instance: Storage
 }) => {
   const token = await instance.get(DefaultStorageKey.TOKEN)
-  const ms = new MugunStore({ token });
+  const ms = new MugunStore({ token })
   const result = await ms.getBookmarks()
-  return result;
+  return result
 }
 
 export interface GetBookmarksRequestBody {}
@@ -68,10 +83,10 @@ const handler: PlasmoMessaging.MessageHandler<
   const storageServer = await instance.get(StorageServer)
 
   let result: GetBookmarksResponseBody = {
-    status: 'fail',
-    message: 'Storage service not set',
+    status: "fail",
+    message: "Storage service not set",
     data: { bookmarks: [] }
-  };
+  }
   if (storageServer === StorageServerValue.GITHUB) {
     result = await getBookmarksFromGithub({ instance })
   } else if (storageServer === StorageServerValue.DEFAULT_SERVER) {

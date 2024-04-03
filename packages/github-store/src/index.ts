@@ -263,17 +263,24 @@ export class GithubStorage extends Github {
     const { branch } = this.#storageOptions;
 
     const content = transformBookmarksToString(initBookmarks);
-    await this.gitInit({ filePath, content });
-    const result = await this.gitCommitAndPush({
-      content,
+    const gitInitResult = await this.gitInitFile({
       filePath,
+      content,
       branch,
+      message: 'init storage file',
     });
+    if (gitInitResult.status === 'fail') {
+      return {
+        status: 'fail',
+        bookmarks: [],
+        message: gitInitResult.message,
+      };
+    }
 
     return {
-      status: result.status === 'success' ? 'success' : 'fail',
-      bookmarks: initBookmarks,
-      message: result.message,
+      status: 'success',
+      bookmarks: [],
+      message: '',
     };
   }
 }
