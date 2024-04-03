@@ -1,21 +1,12 @@
 import Box from "@mui/material/Box"
-import { useEffect, useState } from "react"
 import {
   Route,
-  HashRouter as Router,
+  // HashRouter as Route,
   Routes,
-  useNavigate,
   Navigate
 } from "react-router-dom"
 
-import { getStorage, StorageServer, TagAIServer } from "~storage"
-
 import BookmarksManager from "./BookmarksManager"
-import {
-  InitDialog,
-  type InitType,
-  type OnGoToSettingPage
-} from "./components/InitDialog"
 import { LeftNav, drawerWidth } from "./components/LeftNav"
 import Settings from "./General"
 import { StorageManager } from "./Storage"
@@ -23,31 +14,6 @@ import { TagAIModelManager } from "./Tag"
 import { Feedback } from './Feedback';
 
 function ManagerAndSetting() {
-  const [openInitDialog, setOpenInitDialog] = useState<boolean>(false)
-  const [initType, setInitType] = useState<InitType>("none")
-  const navigate = useNavigate()
-
-  useEffect(() => {
-    const main = async () => {
-      const instance = getStorage()
-      const storageServer = await instance.get(StorageServer)
-      if (!storageServer) {
-        setInitType("storage-server")
-        setOpenInitDialog(true)
-      }
-    }
-    main()
-  }, [])
-
-  const handleGoToSetPage: OnGoToSettingPage = (type) => {
-    if (type === "storage-server") {
-      navigate("/storage")
-    } else if (type === "ai-server") {
-      navigate("/tags");
-    }
-    setOpenInitDialog(false)
-  }
-
   return (
     <>
       <Box sx={{ display: "flex" }}>
@@ -70,10 +36,6 @@ function ManagerAndSetting() {
           </Routes>
         </Box>
       </Box>
-      <InitDialog
-        open={openInitDialog}
-        type={initType}
-        onGoToSettingPage={handleGoToSetPage}></InitDialog>
     </>
   )
 }
