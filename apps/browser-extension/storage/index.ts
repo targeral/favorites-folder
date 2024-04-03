@@ -16,6 +16,7 @@ export const GithubStorageKey = {
     REPO: "REPO",
     OWNER: "OWNER",
     EMAIL: "EMAIL",
+    INIT: "INIT"
 };
 export const DefaultStorageKey = {
     TOKEN: "TOKEN",

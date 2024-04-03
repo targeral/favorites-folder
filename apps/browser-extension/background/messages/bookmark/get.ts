@@ -8,11 +8,14 @@ import type { Storage } from "@plasmohq/storage"
 import { StorageServerValue } from "~constants"
 import { getStorage, GithubStorageKey, StorageServer, DefaultStorageKey } from "~storage"
 
-const getBookmarksFromGithub = async ({ instance }: { instance: Storage }) => {
+const getBookmarksFromGithub = async ({ instance }: { instance: Storage }): Promise<GetBookmarksResponseBody> => {
   const email = await instance.get(GithubStorageKey.EMAIL)
   const token = await instance.get(GithubStorageKey.TOKEN)
   const owner = await instance.get(GithubStorageKey.OWNER)
   const repo = await instance.get(GithubStorageKey.REPO)
+  const initialized = await instance.get<boolean>(GithubStorageKey.INIT);
+  console.info('initialized', initialized);
+
   const gs = new GithubStorage({
     token,
     repo,
@@ -22,7 +25,12 @@ const getBookmarksFromGithub = async ({ instance }: { instance: Storage }) => {
     filename: "data.json",
     branch: "main"
   })
-  const result = await gs.getBookmarks()
+  let result;
+  if (initialized) {
+    result = await gs.getBookmarks()
+  } else {
+    result = await gs.initStorage();
+  }
   return {
     ...result,
     data: {

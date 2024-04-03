@@ -275,9 +275,9 @@ export class Github {
         branch,
         commitSha: commitResult.sha,
       });
-      return { message: 'success', reason: null };
+      return { status: 'success', message: 'success', reason: null };
     } catch (e) {
-      return { message: 'fail', reason: e };
+      return { status: 'fail', message: 'fail', reason: e };
     }
   }
 
@@ -405,5 +405,52 @@ export class Github {
     }
 
     return { content: undefined, error: response.data /** TODO */ };
+  }
+
+  async gitInit({ filePath, content }: { filePath: string; content: string }) {
+    const { repo, owner } = this.#getOwnerAndRepo();
+    // await this.#octokit.request('POST /user/repos', {
+    //   name: repo,
+    //   auto_init: true, // 自动初始化一个 README.md 文件
+    // });
+
+    await this.#octokit.rest.repos.createOrUpdateFileContents({
+      owner,
+      repo,
+      path: filePath,
+      message: 'init data.json',
+      content: Buffer.from(content).toString('base64'),
+      branch: 'main',
+    });
+    // // 获取仓库的内容（包括 README.md）
+    // const {
+    //   data: { sha },
+    // } = await this.#octokit.request(
+    //   'GET /repos/{owner}/{repo}/contents/{path}',
+    //   {
+    //     owner,
+    //     repo,
+    //     path: 'README.md',
+    //   },
+    // );
+
+    // // 创建一个新的 commit
+    // await this.#octokit.request('PUT /repos/{owner}/{repo}/contents/{path}', {
+    //   owner,
+    //   repo,
+    //   path: 'README.md',
+    //   message: 'first commit',
+    //   content: Buffer.from(
+    //     '# Test Bookmarks\nThis is a test repository.',
+    //   ).toString('base64'),
+    //   sha,
+    // });
+
+    // // 更新默认分支为 main
+    // await this.#octokit.request('PATCH /repos/{owner}/{repo}', {
+    //   owner,
+    //   repo,
+    //   default_branch: 'main',
+    // });
   }
 }

@@ -253,4 +253,27 @@ export class GithubStorage extends Github {
       });
     }
   }
+
+  async initStorage(initBookmarks: IBookmark[] = []): Promise<{
+    status: 'success' | 'fail';
+    bookmarks: IBookmark[];
+    message?: string;
+  }> {
+    const filePath = this.#getFilePath();
+    const { branch } = this.#storageOptions;
+
+    const content = transformBookmarksToString(initBookmarks);
+    await this.gitInit({ filePath, content });
+    const result = await this.gitCommitAndPush({
+      content,
+      filePath,
+      branch,
+    });
+
+    return {
+      status: result.status === 'success' ? 'success' : 'fail',
+      bookmarks: initBookmarks,
+      message: result.message,
+    };
+  }
 }
