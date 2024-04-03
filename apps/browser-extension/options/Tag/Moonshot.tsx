@@ -37,7 +37,7 @@ export const MoonshotSetting = ({
   onEnableChange
 }: MoonshotSettingProps) => {
   const [show, setShow] = useState<boolean>(false)
-  const [apiKey, setApiKey] = useStorage<string>(
+  const [apiKey, _setApiKey, { setRenderValue: setApiKey, setStoreValue: saveAPIKey }] = useStorage<string>(
     {
       key: MoonshotKey.API_KEY,
       instance
@@ -74,6 +74,11 @@ export const MoonshotSetting = ({
   const handleSwitch = (event: React.ChangeEvent<HTMLInputElement>) => {
     onEnableChange(event.target.checked)
   }
+
+  const save = () => {
+    saveAPIKey(apiKey);
+  }
+
   return (
     <Accordion sx={{ width: "100%" }}>
       <AccordionSummary aria-controls="moonshot-content" id="moonshot-header">
@@ -103,6 +108,7 @@ export const MoonshotSetting = ({
               label="API Key:"
               value={apiKey}
               onChange={handleApiKeyChange}
+              onBlur={save}
             />
             <Tooltip
               title={

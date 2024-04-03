@@ -32,7 +32,7 @@ export const GeminiSetting = ({
   onEnableChange
 }: GeminiSettingProps) => {
   const [show, setShow] = useState<boolean>(false)
-  const [apiKey, setApiKey] = useStorage<string>(
+  const [apiKey, _setApiKey, { setRenderValue: setApiKey, setStoreValue: saveAPIKey }] = useStorage<string>(
     {
       key: GeminiKey.API_KEY,
       instance
@@ -69,6 +69,11 @@ export const GeminiSetting = ({
   const handleSwitch = (event: React.ChangeEvent<HTMLInputElement>) => {
     onEnableChange(event.target.checked)
   }
+
+  const save = () => {
+    saveAPIKey(apiKey);
+  }
+
   return (
     <Accordion sx={{ width: "100%" }}>
       <AccordionSummary aria-controls="gemini-content" id="gemini-header">
@@ -98,6 +103,7 @@ export const GeminiSetting = ({
               label="API Key:"
               value={apiKey}
               onChange={handleApiKeyChange}
+              onBlur={save}
             />
             <Tooltip
               title={

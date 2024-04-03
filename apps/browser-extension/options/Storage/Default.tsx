@@ -16,12 +16,12 @@ export interface DefaultServerSettingProps {
 
 export const DefaultStorageSetting = ({ enable, onEnableChange }: DefaultServerSettingProps) => {
   const [showToken, setShowToken] = useState<boolean>(false)
-  const [token, setToken] = useStorage<string>(
+  const [token, _setToken, { setRenderValue: setToken, setStoreValue: saveToken }] = useStorage<string>(
     {
       key: DefaultStorageKey.TOKEN,
       instance
     },
-    ""
+    v => v === undefined ? '' : v
   );
 
   useEffect(() => {
@@ -43,6 +43,11 @@ export const DefaultStorageSetting = ({ enable, onEnableChange }: DefaultServerS
   const handleSwitch = (event: React.ChangeEvent<HTMLInputElement>) => {
     onEnableChange && onEnableChange(event.target.checked)
   }
+
+  const save = () => {
+    saveToken(token);
+  };
+
   return (
     <Accordion sx={{ width: "100%" }}>
       <AccordionSummary aria-controls="default-server-content" id="default-server-header">
@@ -70,6 +75,7 @@ export const DefaultStorageSetting = ({ enable, onEnableChange }: DefaultServerS
             label="Token:"
             value={token}
             onChange={handleTokenChange}
+            onBlur={save}
           />
         </Box>
       </AccordionDetails>

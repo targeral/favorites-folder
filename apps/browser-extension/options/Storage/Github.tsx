@@ -6,7 +6,8 @@ import {
   Switch,
   TextField,
   Tooltip,
-  Typography
+  Typography,
+  // Button
 } from "@mui/material"
 import IconButton from "@mui/material/IconButton"
 import React, { useEffect, useState } from "react"
@@ -33,28 +34,28 @@ export const GithubStorageSetting = ({
   onEnableChange
 }: GithubStorageSettingProps) => {
   const [showToken, setShowToken] = useState<boolean>(false)
-  const [token, setToken] = useStorage<string>(
+  const [token, _setToken, { setRenderValue: setToken, setStoreValue: saveToken }] = useStorage<string>(
     {
       key: GithubStorageKey.TOKEN,
       instance
     },
     ""
   )
-  const [repo, setRepo] = useStorage<string>(
+  const [repo, _setRepo, { setRenderValue: setRepo, setStoreValue: saveRepo }] = useStorage<string>(
     {
       key: GithubStorageKey.REPO,
       instance
     },
     ""
   )
-  const [owner, setOwner] = useStorage<string>(
+  const [owner, _setOwner, { setRenderValue: setOwner, setStoreValue: saveOwner }] = useStorage<string>(
     {
       key: GithubStorageKey.OWNER,
       instance
     },
     ""
   )
-  const [email, setEmail] = useStorage<string>(
+  const [email, _setEmail, { setRenderValue: setEmail, setStoreValue: saveEmail }] = useStorage<string>(
     {
       key: GithubStorageKey.EMAIL,
       instance
@@ -92,6 +93,14 @@ export const GithubStorageSetting = ({
   const handleSwitch = (event: React.ChangeEvent<HTMLInputElement>) => {
     onEnableChange(event.target.checked)
   }
+
+  const save = () => {
+    saveOwner(owner);
+    saveEmail(email);
+    saveRepo(repo);
+    saveToken(token);
+  }
+
   return (
     <Accordion sx={{ width: "100%" }}>
       <AccordionSummary aria-controls="github-content" id="github-header">
@@ -119,6 +128,7 @@ export const GithubStorageSetting = ({
               label="Github Repo:"
               value={repo}
               onChange={handleRepoChange}
+              onBlur={save}
               sx={{ flex: "1 1 auto" }}
             />
             <Tooltip
@@ -145,11 +155,13 @@ export const GithubStorageSetting = ({
             label="Github owner:"
             value={owner}
             onChange={handleOwnerChange}
+            onBlur={save}
           />
           <TextField
             label="Owner email:"
             value={email}
             onChange={handleEmailChange}
+            onBlur={save}
           />
           <Box sx={{ display: "flex", alignItems: "center" }}>
             <TextField
@@ -158,25 +170,35 @@ export const GithubStorageSetting = ({
               label="Github Token:"
               value={token}
               onChange={handleTokenChange}
+              onBlur={save}
             />
             <Tooltip
               title={
                 <div>
                   <Typography variant="h6">How to get Github Token</Typography>
                   <Typography variant="body1">
-                    1. Click on this <Link
+                    1. Click on this{" "}
+                    <Link
                       href="https://github.com/settings/personal-access-tokens/new"
                       target="_blank"
                       color="#ffc107"
                       rel="noreferrer">
                       link
-                    </Link> to create
+                    </Link>{" "}
+                    to create
                   </Typography>
                   <Typography variant="body1">
-                    2. Find on the page: 
-                    <Typography sx={{marginLeft: '20px'}} variant="body2">{`=>\n`} "Repository access"</Typography>
-                    <Typography sx={{marginLeft: '20px'}} variant="body2">{`=>\n`} "Only select repositories"</Typography>
-                    <Typography sx={{marginLeft: '20px'}} variant="body2"> {`=>\n`}"Select Your Repo"</Typography>
+                    2. Find on the page:
+                    <Typography sx={{ marginLeft: "20px" }} variant="body2">
+                      {`=>\n`} "Repository access"
+                    </Typography>
+                    <Typography sx={{ marginLeft: "20px" }} variant="body2">
+                      {`=>\n`} "Only select repositories"
+                    </Typography>
+                    <Typography sx={{ marginLeft: "20px" }} variant="body2">
+                      {" "}
+                      {`=>\n`}"Select Your Repo"
+                    </Typography>
                   </Typography>
                 </div>
               }>
@@ -186,6 +208,9 @@ export const GithubStorageSetting = ({
             </Tooltip>
           </Box>
         </Box>
+        {/* <Box sx={{ marginTop: '10px', display: 'flex', justifyContent: 'flex-end' }}>
+          <Button onClick={save} variant="contained">保存</Button>
+        </Box> */}
       </AccordionDetails>
     </Accordion>
   )
