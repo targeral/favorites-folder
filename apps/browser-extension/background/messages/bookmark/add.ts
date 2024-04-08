@@ -1,6 +1,6 @@
 import type { PlasmoMessaging } from "@plasmohq/messaging"
 import type { Storage } from "@plasmohq/storage";
-import type { IBookmark, ITagItem } from "api-types";
+import type { BrowserType, IBookmark, ITagItem } from "api-types";
 import { GithubStorage } from 'github-store';
 import { MugunStore } from 'mugun-store';
 
@@ -10,6 +10,7 @@ import * as tab from '~chrome-utils/tab';
 
 import { StorageServerValue } from "~constants"
 import { getStorage, GithubStorageKey, StorageServer, DefaultStorageKey } from "~storage"
+import { detectBrowser } from "~utils/browser";
 
 export interface BookmarkAddRequestBody {
   tags: ITagItem[];
@@ -20,7 +21,7 @@ export interface BookmarkAddResponseBody {
   message?: string;
 }
 
-const addBookmarkByGithubStorage = async ({ instance }: { instance: Storage }, bookmark: IBookmark): Promise<BookmarkAddResponseBody> => {
+const addBookmarkByGithubStorage = async ({ instance, browserType }: { instance: Storage; browserType: BrowserType }, bookmark: IBookmark): Promise<BookmarkAddResponseBody> => {
   const email = await instance.get(GithubStorageKey.EMAIL);
   const token = await instance.get(GithubStorageKey.TOKEN);
   const owner = await instance.get(GithubStorageKey.OWNER);
@@ -33,15 +34,16 @@ const addBookmarkByGithubStorage = async ({ instance }: { instance: Storage }, b
     email,
     storageFolder: "favorites",
     filename: "data.json",
-    branch: "main"
+    branch: "main",
+    browserType
   });
   const result = await gs.addBookmarks([bookmark]);
   return result;
 }
 
-const addBookmarkByDefaultServer = async ({ instance }: { instance: Storage }, bookmark: IBookmark): Promise<BookmarkAddResponseBody> => {
+const addBookmarkByDefaultServer = async ({ instance, browserType }: { instance: Storage; browserType: BrowserType; }, bookmark: IBookmark): Promise<BookmarkAddResponseBody> => {
   const token = await instance.get(DefaultStorageKey.TOKEN)
-  const ms = new MugunStore({ token });
+  const ms = new MugunStore({ token, browserType });
   const result = await ms.addBookmarks([bookmark]);
   return result;
 }
@@ -51,6 +53,7 @@ const handler: PlasmoMessaging.MessageHandler<BookmarkAddRequestBody, BookmarkAd
   const instance = getStorage()
   const storageServer = await instance.get(StorageServer)
   const currentTab = await tab.getCurrentActiveTab();
+  const browserType = detectBrowser();
   // 在浏览器中添加书签
   await bookmark.createBookmark(currentTab);
   // 添加成功后，更改图标为激活状态
@@ -67,12 +70,13 @@ const handler: PlasmoMessaging.MessageHandler<BookmarkAddRequestBody, BookmarkAd
     title: bookmarkData.title,
     tags,
     url: bookmarkData.url,
-    dateAdded: bookmarkData.dateAdded
+    dateAdded: bookmarkData.dateAdded,
+    browserType
   };
   if (storageServer === StorageServerValue.GITHUB) {
-    result = await addBookmarkByGithubStorage({ instance }, newBookmark);
+    result = await addBookmarkByGithubStorage({ instance, browserType }, newBookmark);
   } else if (storageServer === StorageServerValue.DEFAULT_SERVER) {
-    result = await addBookmarkByDefaultServer({ instance }, newBookmark);
+    result = await addBookmarkByDefaultServer({ instance, browserType }, newBookmark);
   }
 
   if (result.status === 'fail') {

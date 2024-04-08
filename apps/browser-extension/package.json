@@ -18,6 +18,7 @@
     "@plasmohq/messaging": "^0.6.2",
     "@plasmohq/storage": "1.9.3",
     "chalk": "^4",
+    "fuse.js": "7.0.0",
     "github-store": "workspace:*",
     "ky": "1.2.3",
     "moment": "^2.30.1",

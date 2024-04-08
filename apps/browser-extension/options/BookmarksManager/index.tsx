@@ -17,8 +17,10 @@ import {
   TextField,
   type AutocompleteInputChangeReason
 } from "@mui/material"
+import { debounce } from "@mui/material/utils"
 import type { IBookmark, ITagItem } from "api-types"
-import React, { useCallback, useEffect, useState } from "react"
+import Fuse from "fuse.js"
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useNavigate } from "react-router-dom"
 
 import { sendToBackground } from "@plasmohq/messaging"
@@ -36,16 +38,17 @@ import type {
   BookmarkUpdateResponseBody
 } from "~background/messages/bookmark/update"
 import type {
-  BookmarkAddRequestBody,
-  BookmarkAddResponseBody,
   BookmarkBatchRequestBody,
   BookmarkBatchResponseBody,
   BookmarkRemoveRequestBody,
   BookmarkRemoveResponseBody,
+  TagListRequestBody,
+  TagListResponseBody,
   TagsGenerateRequestBody,
   TagsGenerateResponseBody
 } from "~background/types"
 import { getStorage, StorageServer, TagAIServer } from "~storage/index"
+import { detectBrowser } from "~utils/browser"
 
 import {
   InitDialog,
@@ -59,6 +62,8 @@ import {
 } from "./BookmarkEditor"
 
 const instance = getStorage()
+const browserType = detectBrowser()
+const TAG_LIST_LIMIT = 1000
 
 const BookmarkManager = () => {
   const navigate = useNavigate()
@@ -74,6 +79,61 @@ const BookmarkManager = () => {
   const [initType, setInitType] = useState<InitType>("none")
   const [editorOpen, setEditorOpen] = useState(false)
   const [editingBookmark, setEditingBookmark] = useState<IBookmark>()
+  const [enableRemoteFilter, setEnableRemoteFilter] = useState<boolean>(false)
+  const fuseRef = useRef<Fuse<string>>()
+
+  const fetchTags = useMemo(
+    () =>
+      debounce(
+        async (
+          { keyword }: { keyword: string },
+          callback: (results: ITagItem[]) => void
+        ) => {
+          const { status, data } = await sendToBackground<
+            TagListRequestBody,
+            TagListResponseBody
+          >({
+            name: "tags/list",
+            body: {
+              keyword
+            }
+          })
+          if (status === "success") {
+            callback(data.tags)
+          } else {
+            setAlertContent("获取 Tag 列表失败")
+            setAlertType("error")
+            setAlertOpen(true)
+            callback([])
+          }
+        },
+        400
+      ),
+    []
+  )
+
+  const localFilterTagFn = useCallback(
+    (options: string[], { inputValue }: { inputValue: string }) => {
+      const str = "tag:"
+
+      if (inputValue.startsWith(str)) {
+        const keyword = inputValue.split(str)[1]
+        if (keyword.length === 0) {
+          return options
+        }
+        const list = options.map((o) => o.replace(str, ""))
+        const fuse = fuseRef.current
+          ? fuseRef.current
+          : (fuseRef.current = new Fuse(list, { keys: ["name"] }))
+        const result = fuse.search(`${keyword}`)
+        const filteredOptions = result.map((r) => `${str}${r.item}`)
+        return filteredOptions
+      }
+
+      return []
+    },
+    []
+  )
 
   useEffect(() => {
     const checkServerExist = async () => {
@@ -145,15 +205,28 @@ const BookmarkManager = () => {
       if (status === "success") {
         if (bookmarks.length > 0) {
           setBookmarks(bookmarks)
-          setLoading(false)
 
-          const availableTags = new Map<string, ITagItem>()
-          for (const bookmark of bookmarks) {
-            for (const tag of bookmark.tags) {
-              availableTags.set(tag.name, tag)
+          const { status, data } = await sendToBackground<
+            TagListRequestBody,
+            TagListResponseBody
+          >({
+            name: "tags/list",
+            body: {
+              keyword: ""
             }
+          })
+          if (status === "success") {
+            if (data.tags.length > TAG_LIST_LIMIT) {
+              setEnableRemoteFilter(true)
+            } else {
+              setAvailableTags(data.tags)
+            }
+          } else {
+            setAlertContent("获取 Tag 列表失败")
+            setAlertType("error")
+            setAlertOpen(true)
           }
-          setAvailableTags(Array.from(availableTags.values()))
+          setLoading(false)
         } else {
           // 从浏览器获取书签数据，并同步到后端
           const initBookmarks = await initBookmarksData()
@@ -173,6 +246,29 @@ const BookmarkManager = () => {
     // flattenBookmarks(mockBookmarksData);
   }, [])
 
+  useEffect(() => {
+    let active = true
+    const fn = async () => {
+      const keyword = searchText.split("tag:")[1]
+      await fetchTags({ keyword }, (tags) => {
+        if (active) {
+          setAvailableTags(tags)
+        }
+      })
+    }
+    if (enableRemoteFilter) {
+      if (searchText.startsWith("tag:")) {
+        fn()
+      } else {
+        setAvailableTags([])
+      }
+    }
+
+    return () => {
+      active = false
+    }
+  }, [searchText, fetchTags, enableRemoteFilter])
+
   const handleSearchKeyDown = (event) => {
     if (event.key === "Enter" && searchText.startsWith("tag:")) {
       const tagName = searchText.split(":")[1].trim()
@@ -180,7 +276,10 @@ const BookmarkManager = () => {
         tagName &&
         !searchTags.find((searchTag) => searchTag.name === tagName)
       ) {
-        setSearchTags([...searchTags, { name: tagName, source: "SYSTEM" }])
+        setSearchTags([
+          ...searchTags,
+          { name: tagName, source: "SYSTEM", browserType }
+        ])
       }
       setSearchText("")
     }
@@ -230,7 +329,10 @@ const BookmarkManager = () => {
         tagName &&
         !searchTags.find((searchTag) => searchTag.name === tagName)
       ) {
-        setSearchTags([...searchTags, { name: tagName, source: "SYSTEM" }])
+        setSearchTags([
+          ...searchTags,
+          { name: tagName, source: "SYSTEM", browserType }
+        ])
         event.preventDefault()
         setSearchText("")
       }
@@ -376,13 +478,11 @@ const BookmarkManager = () => {
         onInputChange={handleSearchChange}
         onChange={handleSearchTagSelect}
         onKeyDown={handleSearchKeyDown}
-        filterOptions={(options, { inputValue }) => {
-          if (inputValue.startsWith("tag:")) {
-            return options
-          }
-
-          return []
-        }}
+        filterOptions={
+          enableRemoteFilter
+            ? (x) => x // override default filter fn and use remote filter feature
+            : localFilterTagFn
+        }
         renderInput={(params) => (
           <TextField
             {...params}
@@ -427,7 +527,7 @@ const BookmarkManager = () => {
                   component="span" // https://stackoverflow.com/questions/41928567/div-cannot-appear-as-a-descendant-of-p
                   sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                   {bookmark.tags.slice(0, 5).map((tag) => (
-                    <Chip key={tag.name} label={tag.name} />
+                    <Chip component={"span"} key={tag.name} label={tag.name} />
                   ))}
                   {bookmark.tags.length > 5
                     ? `+${bookmark.tags.length - 5}`

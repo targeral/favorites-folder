@@ -1,6 +1,7 @@
 // import axios from 'axios';
+import Fuse from 'fuse.js';
 import debugFactory from 'debug';
-import type { IBookmark, ITagItem } from 'api-types';
+import type { BrowserType, IBookmark, ITagItem } from 'api-types';
 import { Github, GithubOptions } from './github';
 import { transformBookmarksToString } from './utils';
 
@@ -8,6 +9,7 @@ export interface IGithubStorageOptions extends GithubOptions {
   storageFolder: string;
   filename: string;
   branch: string;
+  browserType: BrowserType;
 }
 
 export const debug = debugFactory('GITHUB_STORAGE');
@@ -20,10 +22,24 @@ export class GithubStorage extends Github {
     this.#storageOptions = options || {};
   }
 
+  #getBrowserTypeFolder = () => {
+    const { browserType } = this.#storageOptions;
+    switch (browserType) {
+      case '1':
+        return 'chrome';
+      case '2':
+        return 'edge';
+      case '0':
+        return 'other';
+      default:
+        return 'unknown';
+    }
+  };
+
   #getFilePath() {
-    return `${this.#storageOptions.storageFolder}/${
-      this.#storageOptions.filename
-    }`;
+    const { storageFolder, filename } = this.#storageOptions;
+    const browserFolder = this.#getBrowserTypeFolder();
+    return `${storageFolder}/${browserFolder}/${filename}`;
   }
 
   async addBookmarks(additionalBookmarks: IBookmark[]): Promise<{
@@ -145,7 +161,7 @@ export class GithubStorage extends Github {
     // };
   }
 
-  async getTagsByBookmarkId({ id }: { id: string | number }): Promise<{
+  async getTagsByUrl({ url }: { url: string }): Promise<{
     status: 'success' | 'fail';
     tags: ITagItem[];
     message?: string;
@@ -159,7 +175,7 @@ export class GithubStorage extends Github {
       };
     }
 
-    const bookmark = bookmarks.find(bookmark => bookmark.id === id);
+    const bookmark = bookmarks.find(bookmark => bookmark.url === url);
 
     if (!bookmark) {
       return {
@@ -172,6 +188,52 @@ export class GithubStorage extends Github {
     return {
       status: 'success',
       tags: bookmark.tags,
+    };
+  }
+
+  async getTagsByKeyword({ keyword }: { keyword: string }): Promise<{
+    status: 'success' | 'fail';
+    tags: ITagItem[];
+    message?: string;
+  }> {
+    const { status, bookmarks } = await this.getBookmarks();
+    if (status === 'fail') {
+      return {
+        status: 'fail',
+        tags: [],
+        message: 'Get bookmarks fail',
+      };
+    }
+
+    const map = new Map<string, ITagItem>();
+    const tags = bookmarks.flatMap(bookmark => bookmark.tags);
+    console.info('tags', tags);
+    for (const tag of tags) {
+      if (!map.has(tag.name)) {
+        map.set(tag.name, tag);
+      }
+    }
+    const allTags = Array.from(map.values());
+    console.info('allTags', allTags);
+
+    if (keyword.trim() === '') {
+      return {
+        status: 'success',
+        tags: allTags,
+      };
+    }
+
+    const fuse = new Fuse(allTags, {
+      keys: ['name'],
+    });
+
+    const result = fuse.search(keyword);
+    console.info('result', result);
+
+    const searchedTags = result.map(r => r.item);
+    return {
+      status: 'success',
+      tags: searchedTags,
     };
   }
 
@@ -226,9 +288,7 @@ export class GithubStorage extends Github {
 
   async syncBookmarks(bookmarks: IBookmark[]) {
     const jsonString = transformBookmarksToString(bookmarks);
-    const filePath = `${this.#storageOptions.storageFolder}/${
-      this.#storageOptions.filename
-    }`;
+    const filePath = this.#getFilePath();
     const { branch } = this.#storageOptions;
 
     const result = await this.checkFilePathExistAndReturnContentData({

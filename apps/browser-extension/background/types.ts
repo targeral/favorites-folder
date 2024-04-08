@@ -7,6 +7,10 @@ export type {
   TagsGetResponseBody
 } from "./messages/tags/get"
 export type {
+  TagListRequestBody,
+  TagListResponseBody
+} from "./messages/tags/list"
+export type {
   BookmarkAddRequestBody,
   BookmarkAddResponseBody
 } from "./messages/bookmark/add"

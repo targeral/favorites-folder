@@ -47,6 +47,7 @@ import {
   checkIsNewTab,
   getCurrentActiveTab
 } from "../chrome-utils"
+import { detectBrowser } from "~utils/browser"
 
 enum BookmarkAction {
   CREATE,
@@ -55,6 +56,7 @@ enum BookmarkAction {
 }
 
 const instance = getStorage()
+const browserType = detectBrowser();
 
 const Bookmark = () => {
   log("run BookmarkCard")
@@ -330,7 +332,7 @@ const Bookmark = () => {
   }
 
   const handleAddTagClick = () => {
-    setTags([...tags, { name: "", source: "USER" }])
+    setTags([...tags, { name: "", source: "USER", browserType }])
     setIsAddingTag(true)
     setEditTagIndex(tags.length)
   }

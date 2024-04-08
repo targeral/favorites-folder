@@ -1,4 +1,4 @@
-import type { IBookmark } from "api-types"
+import type { BrowserType, IBookmark } from "api-types"
 import { GithubStorage } from "github-store"
 import { MugunStore } from "mugun-store"
 
@@ -12,11 +12,14 @@ import {
   GithubStorageKey,
   StorageServer
 } from "~storage"
+import { detectBrowser } from "~utils/browser"
 
 const getBookmarksFromGithub = async ({
-  instance
+  instance,
+  browserType
 }: {
-  instance: Storage
+  instance: Storage;
+  browserType: BrowserType
 }): Promise<GetBookmarksResponseBody> => {
   const email = await instance.get(GithubStorageKey.EMAIL)
   const token = await instance.get(GithubStorageKey.TOKEN)
@@ -31,7 +34,8 @@ const getBookmarksFromGithub = async ({
     email,
     storageFolder: "favorites",
     filename: "data.json",
-    branch: "main"
+    branch: "main",
+    browserType
   })
   let result: {
     status: "success" | "fail"
@@ -55,12 +59,14 @@ const getBookmarksFromGithub = async ({
 }
 
 const getBookmarksFromDefaultServer = async ({
-  instance
+  instance,
+  browserType
 }: {
-  instance: Storage
+  instance: Storage,
+  browserType: BrowserType
 }) => {
   const token = await instance.get(DefaultStorageKey.TOKEN)
-  const ms = new MugunStore({ token })
+  const ms = new MugunStore({ token, browserType })
   const result = await ms.getBookmarks()
   return result
 }
@@ -80,6 +86,7 @@ const handler: PlasmoMessaging.MessageHandler<
   GetBookmarksResponseBody
 > = async (req, res) => {
   const instance = getStorage()
+  const browserType = detectBrowser();
   const storageServer = await instance.get(StorageServer)
 
   let result: GetBookmarksResponseBody = {
@@ -88,9 +95,9 @@ const handler: PlasmoMessaging.MessageHandler<
     data: { bookmarks: [] }
   }
   if (storageServer === StorageServerValue.GITHUB) {
-    result = await getBookmarksFromGithub({ instance })
+    result = await getBookmarksFromGithub({ instance, browserType })
   } else if (storageServer === StorageServerValue.DEFAULT_SERVER) {
-    result = await getBookmarksFromDefaultServer({ instance })
+    result = await getBookmarksFromDefaultServer({ instance, browserType })
   }
 
   res.send(result)

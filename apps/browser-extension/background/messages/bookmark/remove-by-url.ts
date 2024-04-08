@@ -12,6 +12,8 @@ import {
   GithubStorageKey,
   StorageServer
 } from "~storage"
+import type { BrowserType } from "api-types"
+import { detectBrowser } from "~utils/browser"
 
 export interface BookmarkRemoveByUrlRequestBody {
   url: string
@@ -23,7 +25,7 @@ export interface BookmarkRemoveByUrlResponseBody {
 }
 
 const removeByGithub = async (
-  { instance }: { instance: Storage },
+  { instance, browserType}: { instance: Storage; browserType: BrowserType },
   { id }: { id: string }
 ): Promise<BookmarkRemoveByUrlResponseBody> => {
   const email = await instance.get(GithubStorageKey.EMAIL)
@@ -37,17 +39,18 @@ const removeByGithub = async (
     email,
     storageFolder: "favorites",
     filename: "data.json",
-    branch: "main"
+    branch: "main",
+    browserType
   })
   const result = await gs.removeBookmarkById({ id })
   return result
 }
 const removeByDefaultServer = async (
-  { instance }: { instance: Storage },
+  { instance, browserType }: { instance: Storage; browserType: BrowserType },
   { id }: { id: string }
 ): Promise<BookmarkRemoveByUrlResponseBody> => {
   const token = await instance.get(DefaultStorageKey.TOKEN)
-  const ms = new MugunStore({ token })
+  const ms = new MugunStore({ token, browserType })
   const result = await ms.removeBookmarkById({ id })
   return result
 }
@@ -56,6 +59,7 @@ const handler: PlasmoMessaging.MessageHandler<
   BookmarkRemoveByUrlRequestBody,
   BookmarkRemoveByUrlResponseBody
 > = async (req, res) => {
+  const browserType = detectBrowser();
   const { url } = req.body
   const instance = getStorage()
   const storageServer = await instance.get(StorageServer)
@@ -65,10 +69,10 @@ const handler: PlasmoMessaging.MessageHandler<
   }
   const browserBookmark = await bookmark.findBookmarkByUrl(url)
   if (storageServer === StorageServerValue.GITHUB) {
-    result = await removeByGithub({ instance }, { id: browserBookmark.id })
+    result = await removeByGithub({ instance, browserType }, { id: browserBookmark.id })
   } else if (storageServer === StorageServerValue.DEFAULT_SERVER) {
     result = await removeByDefaultServer(
-      { instance },
+      { instance, browserType },
       { id: browserBookmark.id }
     )
   }

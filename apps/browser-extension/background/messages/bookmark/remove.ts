@@ -1,6 +1,6 @@
 import type { PlasmoMessaging } from "@plasmohq/messaging"
 import type { Storage } from "@plasmohq/storage"
-import type { IBookmark } from "api-types"
+import type { BrowserType, IBookmark } from "api-types"
 import { GithubStorage } from "github-store"
 import { MugunStore } from "mugun-store"
 
@@ -12,6 +12,7 @@ import {
   GithubStorageKey,
   StorageServer
 } from "~storage"
+import { detectBrowser } from "~utils/browser"
 
 export interface BookmarkRemoveRequestBody {
   bookmark: IBookmark;
@@ -23,7 +24,7 @@ export interface BookmarkRemoveResponseBody {
 }
 
 const removeByGithub = async (
-  { instance }: { instance: Storage },
+  { instance, browserType }: { instance: Storage; browserType: BrowserType },
   { id }: { id: string }
 ): Promise<BookmarkRemoveResponseBody> => {
     const email = await instance.get(GithubStorageKey.EMAIL)
@@ -37,17 +38,18 @@ const removeByGithub = async (
     email,
     storageFolder: "favorites",
     filename: "data.json",
-    branch: "main"
+    branch: "main",
+    browserType
   });
   const result = await gs.removeBookmarkById({ id });
   return result;
 }
 const removeByDefaultServer = async (
-  { instance }: { instance: Storage },
+  { instance, browserType }: { instance: Storage; browserType: BrowserType },
   { id }: { id: string }
 ): Promise<BookmarkRemoveResponseBody> => {
     const token = await instance.get(DefaultStorageKey.TOKEN)
-  const ms = new MugunStore({ token })
+  const ms = new MugunStore({ token, browserType })
   const result = await ms.removeBookmarkById({ id });
   return result;
 }
@@ -57,6 +59,7 @@ const handler: PlasmoMessaging.MessageHandler<
   BookmarkRemoveResponseBody
 > = async (req, res) => {
   const { bookmark } = req.body
+  const browserType = detectBrowser();
   const instance = getStorage()
   const storageServer = await instance.get(StorageServer)
   let result: BookmarkRemoveResponseBody = {
@@ -64,10 +67,10 @@ const handler: PlasmoMessaging.MessageHandler<
     message: 'Storage service not set'
   };
   if (storageServer === StorageServerValue.GITHUB) {
-    result = await removeByGithub({ instance }, { id: String(bookmark.id) })
+    result = await removeByGithub({ instance, browserType }, { id: String(bookmark.id) })
   } else if (storageServer === StorageServerValue.DEFAULT_SERVER) {
     result = await removeByDefaultServer(
-      { instance },
+      { instance, browserType },
       { id: String(bookmark.id) }
     )
   }

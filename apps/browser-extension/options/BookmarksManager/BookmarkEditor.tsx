@@ -21,6 +21,7 @@ import React, { useCallback, useEffect, useState } from "react"
 import { useStorage } from "@plasmohq/storage/hook"
 
 import { GeneralSetting, getStorage } from "~storage/index"
+import { detectBrowser } from "~utils/browser"
 
 export type OnTagsUpdate = (bookmark: IBookmark) => Promise<void> | void
 export type OnRemove = (bookmark: IBookmark) => Promise<void> | void
@@ -40,12 +41,15 @@ export interface BookmarkProps {
   onRemove?: OnRemove
 }
 
+const browserType = detectBrowser();
+
 const defaultBookmark: IBookmark = {
   title: "",
   tags: [],
   id: "",
   url: "",
-  dateAdded: 0
+  dateAdded: 0,
+  browserType
 }
 
 const instance = getStorage()
@@ -134,7 +138,7 @@ const BookmarkEditor: React.FC<BookmarkProps> = ({
       editTags.length === 0 ||
       editTags[editTags.length - 1].name.trim() !== ""
     ) {
-      setEditTags([...editTags, { name: "", source: "USER" }])
+      setEditTags([...editTags, { name: "", source: "USER", browserType }])
       setEditingTagIndex(editTags.length) // This will be the index of the new tag
     }
   }

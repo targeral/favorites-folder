@@ -1,4 +1,4 @@
-import type { IBookmark, ITagItem } from "api-types"
+import type { BrowserType, IBookmark, ITagItem } from "api-types"
 import { GithubStorage } from "github-store"
 import { MugunStore } from "mugun-store"
 
@@ -13,6 +13,7 @@ import {
   StorageServer
 } from "~storage"
 import { findBookmarkByUrl } from "~chrome-utils"
+import { detectBrowser } from "~utils/browser"
 
 export interface BookmarkUpdateByUrlRequestBody {
   url: string;
@@ -26,7 +27,7 @@ export interface BookmarkUpdateByUrlResponseBody {
 }
 
 const updateBookmarkFromGithub = async (
-  { instance }: { instance: Storage },
+  { instance, browserType }: { instance: Storage; browserType: BrowserType; },
   { id, newTags, title }: { id: string; newTags?: ITagItem[]; title?: string }
 ): Promise<BookmarkUpdateByUrlResponseBody> => {
   const email = await instance.get(GithubStorageKey.EMAIL)
@@ -41,7 +42,8 @@ const updateBookmarkFromGithub = async (
     email,
     storageFolder: "favorites",
     filename: "data.json",
-    branch: "main"
+    branch: "main",
+    browserType
   })
   const result = await gs.modifyBookmarkById({ id, newTags, title })
   return result
@@ -49,14 +51,16 @@ const updateBookmarkFromGithub = async (
 
 const updateBookmarkFromDefaultServer = async (
   {
-    instance
+    instance,
+    browserType
   }: {
-    instance: Storage
+    instance: Storage;
+    browserType: BrowserType;
   },
   updatedBookmark: IBookmark
 ): Promise<BookmarkUpdateByUrlResponseBody> => {
   const token = await instance.get(DefaultStorageKey.TOKEN)
-  const ms = new MugunStore({ token })
+  const ms = new MugunStore({ token, browserType })
   const result = await ms.updateBookmark(updatedBookmark)
   return result
 }
@@ -66,6 +70,7 @@ const handler: PlasmoMessaging.MessageHandler<
   BookmarkUpdateByUrlResponseBody
 > = async (req, res) => {
   const { url, tags, title } = req.body
+  const browserType = detectBrowser();
   const { id, dateAdded } = await findBookmarkByUrl(url);
   const updatedBookmark: IBookmark = {
     tags,
@@ -73,6 +78,7 @@ const handler: PlasmoMessaging.MessageHandler<
     url,
     id,
     dateAdded,
+    browserType
   }
 
   const instance = getStorage()
@@ -84,7 +90,7 @@ const handler: PlasmoMessaging.MessageHandler<
   };
   if (storageServer === StorageServerValue.GITHUB) {
     result = await updateBookmarkFromGithub(
-      { instance },
+      { instance, browserType },
       {
         id: String(updatedBookmark.id),
         newTags: updatedBookmark.tags,
@@ -92,7 +98,7 @@ const handler: PlasmoMessaging.MessageHandler<
       }
     )
   } else if (storageServer === StorageServerValue.DEFAULT_SERVER) {
-    result = await updateBookmarkFromDefaultServer({instance}, updatedBookmark);
+    result = await updateBookmarkFromDefaultServer({ instance, browserType }, updatedBookmark);
   }
 
   res.send(result)

@@ -1,4 +1,4 @@
-import type { ITagItem } from 'api-types';
+import type { BrowserType, ITagItem } from 'api-types';
 import { GenimiAnalyser, type GenimiAnalysisOptions } from './ai/gemini';
 import { extractHtml } from './crawler';
 import { MoonshotAnalyser, MoonshotAnalysisOptions } from './ai/moonshot';
@@ -6,6 +6,7 @@ import { MoonshotAnalyser, MoonshotAnalysisOptions } from './ai/moonshot';
 export interface ISiteAnalyserOptions {
   url: string;
   tagMaxCount?: number;
+  browserType: BrowserType;
 }
 
 export class SiteAnalyser {
@@ -21,6 +22,7 @@ export class SiteAnalyser {
     data: ITagItem[];
     message?: string;
   }> {
+    const { browserType } = this.options;
     const ga = new GenimiAnalyser(options);
     const content = await this.#getWebsiteContent();
     const { data, error } = await ga.analysis(content, {
@@ -38,6 +40,7 @@ export class SiteAnalyser {
       data: data.split(',').map(name => ({
         name,
         source: 'AI',
+        browserType,
       })),
     };
   }
@@ -47,6 +50,7 @@ export class SiteAnalyser {
     data: ITagItem[];
     message?: string;
   }> {
+    const { browserType } = this.options;
     const moonshot = new MoonshotAnalyser(options);
     const content = await this.#getWebsiteContent();
     const { data, error } = await moonshot.analysis(content, {
@@ -66,6 +70,7 @@ export class SiteAnalyser {
       data: data.split(',').map(name => ({
         name,
         source: 'AI',
+        browserType,
       })),
     };
   }

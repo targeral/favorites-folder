@@ -1,4 +1,4 @@
-import type { IBookmark, ITagItem } from "api-types"
+import type { BrowserType, IBookmark, ITagItem } from "api-types"
 import { GithubStorage } from "github-store"
 import { MugunStore } from "mugun-store"
 
@@ -13,6 +13,7 @@ import {
   GithubStorageKey,
   StorageServer
 } from "~storage"
+import { detectBrowser } from "~utils/browser"
 
 export interface TagsGetRequestBody {
   url: string
@@ -27,8 +28,8 @@ export interface TagsGetResponseBody {
 }
 
 const getTagsByGithub = async (
-  { instance }: { instance: Storage },
-  { id }: { id: string }
+  { instance, browserType }: { instance: Storage; browserType: BrowserType; },
+  { url }: { url: string }
 ): Promise<TagsGetResponseBody> => {
   const email = await instance.get(GithubStorageKey.EMAIL)
   const token = await instance.get(GithubStorageKey.TOKEN)
@@ -42,9 +43,10 @@ const getTagsByGithub = async (
     email,
     storageFolder: "favorites",
     filename: "data.json",
-    branch: "main"
+    branch: "main",
+    browserType
   })
-  const { status, message, tags } = await gs.getTagsByBookmarkId({ id })
+  const { status, message, tags } = await gs.getTagsByUrl({ url })
   return {
     status,
     message,
@@ -56,24 +58,25 @@ const getTagsByGithub = async (
 
 const getTagsByDefaultServer = async (
   {
-    instance
+    instance,
+    browserType
   }: {
-    instance: Storage
+    instance: Storage;
+    browserType: BrowserType;
   },
-  { id }: { id: string }
+  { url }: { url: string }
 ): Promise<TagsGetResponseBody> => {
   const token = await instance.get(DefaultStorageKey.TOKEN)
-  const ms = new MugunStore({ token })
+  const ms = new MugunStore({ token, browserType })
   const {
     status,
-    data: { bookmarks }
-  } = await ms.getBookmarks()
-  const foundBookmark = bookmarks.find((bookmark) => String(bookmark.id) === String(id))
-  if (status === "success" && foundBookmark) {
+    data: { tags }
+  } = await ms.getTagsByUrl({ url });
+  if (status === "success") {
     return {
       status,
       data: {
-        tags: foundBookmark.tags
+        tags
       }
     }
   }
@@ -92,6 +95,7 @@ const handler: PlasmoMessaging.MessageHandler<
   TagsGetResponseBody
 > = async (req, res) => {
   const { url } = req.body
+  const browserType = detectBrowser();
   const instance = getStorage()
   const storageServer = await instance.get(StorageServer)
   const browserBookmark = await findBookmarkByUrl(url)
@@ -102,9 +106,9 @@ const handler: PlasmoMessaging.MessageHandler<
     data: { tags: [] }
   };
   if (storageServer === StorageServerValue.GITHUB) {
-    result = await getTagsByGithub({ instance }, { id: browserBookmark.id })
+    result = await getTagsByGithub({ instance, browserType }, { url: browserBookmark.url })
   } else if (storageServer === StorageServerValue.DEFAULT_SERVER) {
-    result = await getTagsByDefaultServer({ instance }, { id: browserBookmark.id })
+    result = await getTagsByDefaultServer({ instance, browserType }, { url: browserBookmark.url })
   }
 
   res.send(result)
