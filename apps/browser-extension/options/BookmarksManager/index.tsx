@@ -374,9 +374,6 @@ const BookmarkManager = () => {
         }
       })
       if (result.status === "success") {
-        setAlertType("success")
-        setAlertContent("更新成功")
-        setEditorOpen(false)
         const index = bookmarks.findIndex(
           (bookmark) => bookmark.id === updatedBookmark.id
         )
@@ -385,6 +382,32 @@ const BookmarkManager = () => {
           updatedBookmarks[index] = updatedBookmark
           setBookmarks(updatedBookmarks)
         }
+
+        // 更新本地 tag
+        const { status, data } = await sendToBackground<
+          TagListRequestBody,
+          TagListResponseBody
+        >({
+          name: "tags/list",
+          body: {
+            keyword: ""
+          }
+        })
+        if (status === "success") {
+          if (data.tags.length > TAG_LIST_LIMIT) {
+            setEnableRemoteFilter(true)
+          } else {
+            setAvailableTags(data.tags)
+          }
+        } else {
+          setAlertContent("获取 Tag 列表失败")
+          setAlertType("error")
+          setAlertOpen(true)
+        }
+        
+        setAlertType("success")
+        setAlertContent("更新成功")
+        setEditorOpen(false)
       } else {
         setAlertType("error")
         setAlertContent("更新失败")

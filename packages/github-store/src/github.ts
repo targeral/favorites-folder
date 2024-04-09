@@ -380,31 +380,45 @@ export class Github {
   }: {
     filePath: string;
     branch: string;
-  }) {
-    const response = await this.#octokit.rest.repos.getContent({
-      ...this.#getOwnerAndRepo(),
-      path: filePath,
-      ref: branch,
-      headers: {
-        'cache-control': 'no-cache',
-      },
-    });
-    if (
-      response.status === 200 &&
-      !Array.isArray(response.data) &&
-      response.data.type === 'file'
-    ) {
-      const {
-        data: { content: contentBase64 },
-      } = response;
-      const contentString = Buffer.from(contentBase64, 'base64').toString(
-        'utf-8',
-      );
-      debug(contentString);
-      return { content: contentString, error: null };
-    }
+  }): Promise<{ content?: string; error: any }> {
+    try {
+      const response = await this.#octokit.rest.repos.getContent({
+        ...this.#getOwnerAndRepo(),
+        path: filePath,
+        ref: branch,
+        headers: {
+          'cache-control': 'no-cache',
+        },
+      });
+      if (
+        response.status === 200 &&
+        !Array.isArray(response.data) &&
+        response.data.type === 'file'
+      ) {
+        const {
+          data: { content: contentBase64 },
+        } = response;
+        const contentString = Buffer.from(contentBase64, 'base64').toString(
+          'utf-8',
+        );
+        debug(contentString);
+        return { content: contentString, error: null };
+      }
 
-    return { content: undefined, error: response.data /** TODO */ };
+      return { content: undefined, error: response.data /** TODO */ };
+    } catch (e) {
+      if ((e as { status: number }).status === 404) {
+        return {
+          content: '',
+          error: 'data.json does not exist and will not be created.',
+        };
+      }
+
+      return {
+        content: '',
+        error: e,
+      };
+    }
   }
 
   async gitInitFile({

@@ -240,10 +240,12 @@ const Bookmark = () => {
       })
       if (result.status === "success") {
         setAlertContent("保存成功！")
+        setAlertType('success')
         setAutoCloseWindow(true)
       } else {
         setAutoCloseWindow(false)
         setAlertContent("保存失败，请重试！")
+        setAlertType('error')
       }
     } else if (bookmarkAction === BookmarkAction.MODIFY) {
       const result = await sendToBackground<
@@ -259,9 +261,11 @@ const Bookmark = () => {
       })
       if (result.status === "success") {
         setAlertContent("更新成功！")
+        setAlertType('success')
         setAutoCloseWindow(true)
       } else {
         setAlertContent(`更新失败，请重试！`)
+        setAlertType('error')
         setAutoCloseWindow(false)
       }
     }
