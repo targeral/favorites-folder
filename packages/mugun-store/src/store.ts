@@ -1,33 +1,18 @@
 import { BrowserType, IBookmark, ITagItem } from 'api-types';
-import ky, { Options as KyOptions } from 'ky';
 import dayjs from 'dayjs';
+import { MugunBase, type MugunBaseOptions } from './base';
 
-export interface StoreOptions {
+export interface StoreOptions extends MugunBaseOptions {
   token: string;
   browserType: BrowserType;
 }
 
-export class MugunStore {
+export class MugunStore extends MugunBase {
   options: StoreOptions;
 
-  #baseUrl: string;
-
   constructor(options: StoreOptions) {
+    super(options);
     this.options = options || {};
-    this.#baseUrl = BASE_URL;
-    console.info('MugunStore', this.options);
-  }
-
-  async #fetch<T>(url: string, options: KyOptions) {
-    const response = await ky.post(url, {
-      ...options,
-      headers: {
-        token: this.options.token,
-        'Cache-Control': 'no-cache',
-        ...(options.headers ?? {}),
-      },
-    });
-    return response.json<T>();
   }
 
   async getBookmarks(): Promise<{
@@ -35,9 +20,9 @@ export class MugunStore {
     data: { bookmarks: IBookmark[] };
   }> {
     const { browserType } = this.options;
-    const url = `${this.#baseUrl}/bookmark/search`;
+    const url = `${this.baseUrl}/bookmark/search`;
 
-    const { code, data } = await this.#fetch<{
+    const { code, data } = await this.fetch<{
       code: number;
       data: {
         id: number;
@@ -79,7 +64,7 @@ export class MugunStore {
     status: 'success' | 'fail';
   }> {
     const { browserType } = this.options;
-    const url = `${this.#baseUrl}/bookmark/update`;
+    const url = `${this.baseUrl}/bookmark/update`;
     const data = {
       website: bookmark.url,
       tags: bookmark.tags,
@@ -88,7 +73,7 @@ export class MugunStore {
       browserType,
     };
     console.info('data', data);
-    const result = await this.#fetch<{ code: number }>(url, {
+    const result = await this.fetch<{ code: number }>(url, {
       json: data,
     });
 
@@ -108,7 +93,7 @@ export class MugunStore {
     status: 'success' | 'fail';
   }> {
     const { browserType } = this.options;
-    const url = `${this.#baseUrl}/bookmark/insert`;
+    const url = `${this.baseUrl}/bookmark/insert`;
     const data = bookmarks.map(bookmark => ({
       website: bookmark.url,
       tags: bookmark.tags,
@@ -116,7 +101,7 @@ export class MugunStore {
       id: bookmark.id,
       browserType,
     }));
-    const result = await this.#fetch<{ code: number }>(url, {
+    const result = await this.fetch<{ code: number }>(url, {
       json: data,
     });
 
@@ -135,9 +120,9 @@ export class MugunStore {
   async removeBookmarkById({ id }: { id: string }): Promise<{
     status: 'success' | 'fail';
   }> {
-    const url = `${this.#baseUrl}/bookmark/delete`;
+    const url = `${this.baseUrl}/bookmark/delete`;
     const data = { id };
-    const result = await this.#fetch<{ code: number }>(url, {
+    const result = await this.fetch<{ code: number }>(url, {
       json: data,
     });
 
@@ -160,8 +145,8 @@ export class MugunStore {
     };
   }> {
     const { browserType } = this.options;
-    const url = `${this.#baseUrl}/tags/searchTagsByInfo`;
-    const result = await this.#fetch<{ code: number; data: ITagItem[] }>(url, {
+    const url = `${this.baseUrl}/tags/searchTagsByInfo`;
+    const result = await this.fetch<{ code: number; data: ITagItem[] }>(url, {
       json: { keyword, browserType },
     });
 
@@ -190,8 +175,8 @@ export class MugunStore {
     };
   }> {
     const { browserType } = this.options;
-    const url = `${this.#baseUrl}/tags/searchTagsByWebsite`;
-    const result = await this.#fetch<{ code: number; data: ITagItem[] }>(url, {
+    const url = `${this.baseUrl}/tags/searchTagsByWebsite`;
+    const result = await this.fetch<{ code: number; data: ITagItem[] }>(url, {
       json: { website, browserType },
     });
 
