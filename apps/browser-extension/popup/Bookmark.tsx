@@ -163,6 +163,8 @@ const Bookmark = () => {
       log("isBookmarked", isBookmarked)
 
       if (isNewTab) {
+        // 一个空页面，则直接跳转到书签列表页面
+        chrome.runtime.openOptionsPage();
         setNewTab(true)
         setAppearFetchTagLoading(false)
         return
