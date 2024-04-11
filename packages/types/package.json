@@ -1,0 +1,4 @@
+{
+    "name": "api-types",
+    "main": "./index.ts"
+}

@@ -1,0 +1,63 @@
+{
+  "name": "favorites-folder",
+  "displayName": "Favorites folder",
+  "version": "0.0.2",
+  "description": "like chrome bookmards",
+  "author": "targeral",
+  "scripts": {
+    "dev": "plasmo dev",
+    "build": "plasmo build",
+    "package": "plasmo package"
+  },
+  "dependencies": {
+    "@emotion/react": "^11.11.4",
+    "@emotion/styled": "^11.11.0",
+    "@mui/icons-material": "^5.15.12",
+    "@mui/lab": "5.0.0-alpha.169",
+    "@mui/material": "^5.15.12",
+    "@plasmohq/messaging": "^0.6.2",
+    "@plasmohq/storage": "1.9.3",
+    "chalk": "^4",
+    "fuse.js": "7.0.0",
+    "github-store": "workspace:*",
+    "ky": "1.2.3",
+    "moment": "^2.30.1",
+    "mugun-store": "workspace:*",
+    "plasmo": "0.84.2",
+    "react": "18.2.0",
+    "react-dom": "18.2.0",
+    "react-router-dom": "6.22.3"
+  },
+  "devDependencies": {
+    "@ianvs/prettier-plugin-sort-imports": "4.1.1",
+    "@types/chrome": "0.0.258",
+    "@types/node": "20.11.5",
+    "@types/react": "18.2.48",
+    "@types/react-dom": "18.2.18",
+    "analysis-tags": "workspace:*",
+    "api-types": "workspace:*",
+    "prettier": "3.2.4",
+    "typescript": "5.3.3"
+  },
+  "manifest": {
+    "host_permissions": [
+      "https://*/*"
+    ],
+    "web_accessible_resources": [
+      {
+        "resources": [
+          "resources/*"
+        ],
+        "matches": [
+          "https://*/*"
+        ]
+      }
+    ],
+    "permissions": [
+      "activeTab",
+      "scripting",
+      "bookmarks",
+      "storage"
+    ]
+  }
+}
