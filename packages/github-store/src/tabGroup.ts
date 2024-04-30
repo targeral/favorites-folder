@@ -39,6 +39,55 @@ export class TabGroupGithubStorage extends GithubStorage {
     };
   }
 
+  async modifyTabGroupByTitle({
+    queryTitle,
+    newTitle,
+    bookmarks
+  }: {
+    queryTitle: string;
+    newTitle?: string;
+    bookmarks?: IBookmark[];
+  }): Promise<{
+    status: 'success' | 'fail';
+    message?: string;
+  }> {
+    const { status, bookmarks } = await this.getBookmarks();
+    if (status === 'fail') {
+      return {
+        status: 'fail',
+        message: 'Get bookmarks fail',
+      };
+    }
+
+    const bookmarkIndex = bookmarks.findIndex(bookmark => bookmark.url === url);
+    console.info('bookmarkIndex', bookmarkIndex);
+
+    if (bookmarkIndex === -1) {
+      return {
+        status: 'fail',
+        message: 'Can`t find this bookmark',
+      };
+    }
+
+    if (title && bookmarks[bookmarkIndex].title !== title) {
+      bookmarks[bookmarkIndex].title = title;
+    }
+    if (newTags) {
+      bookmarks[bookmarkIndex].tags = newTags;
+    }
+    const result = await this.syncBookmarks(bookmarks);
+
+    if (result.message === 'success') {
+      return {
+        status: 'success',
+      };
+    }
+
+    return {
+      status: 'fail',
+    };
+  }
+
   async getTabGroups(): Promise<{
     status: 'success' | 'fail';
     tabGroups: ITabGroups;

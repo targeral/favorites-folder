@@ -1,7 +1,7 @@
 import type { BrowserType, IBookmark, ITagItem } from "api-types"
 import { GithubStorage } from "github-store"
-import { tabGroupFolder } from "~constants"
 
+import { StorageServerValue, tabGroupFolder } from "~constants"
 import {
   DefaultStorageKey,
   getStorage,
@@ -9,12 +9,13 @@ import {
   StorageServer,
   TAB_GROUP_MAP_KEY
 } from "~storage"
+import { detectBrowser } from "~utils/browser"
 
 const storage = getStorage()
 
 const updateBookmarkFromGithub = async (
   { instance, browserType }: { instance: Storage; browserType: BrowserType },
-  { id, newTags, title }: { id: string; newTags?: ITagItem[]; title?: string }
+  { url, newTags, title }: { url: string; newTags?: ITagItem[]; title?: string }
 ) => {
   const email = await instance.get(GithubStorageKey.EMAIL)
   const token = await instance.get(GithubStorageKey.TOKEN)
@@ -31,8 +32,18 @@ const updateBookmarkFromGithub = async (
     branch: "main",
     browserType
   })
-  const result = await gs.modifyBookmarkById({ id, newTags, title })
+  const result = await gs.modifyBookmarkByUrl({ url, newTags, title })
   return result
+}
+
+const updateBookmark = async (tab) => {
+  const instance = getStorage()
+  const storageServer = await instance.get(StorageServer)
+  const browserType = detectBrowser();
+  if (storageServer === StorageServerValue.GITHUB) {
+    await updateBookmarkFromGithub({instance,  browserType }, { url })
+  } else if (storageServer === StorageServerValue.DEFAULT_SERVER) {
+  }
 }
 
 /**
